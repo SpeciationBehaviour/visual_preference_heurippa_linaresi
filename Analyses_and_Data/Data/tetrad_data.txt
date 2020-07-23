@@ -1,0 +1,17 @@
+counts region_heu female male combo same_type
+2 bva lin lin lin_lin same
+2 bva lin heu lin_heu diff
+2 bva heu lin heu_lin diff
+3 bva heu heu heu_heu same
+9 lej lin lin lin_lin same
+16 lej lin heu lin_heu diff
+7 lej heu lin heu_lin diff
+26 lej heu heu heu_heu same
+1 mix lin lin lin_lin same
+2 mix lin heu lin_heu diff
+3 mix heu lin heu_lin diff
+6 mix heu heu heu_heu same
+2 sma lin lin lin_lin same
+4 sma lin heu lin_heu diff
+3 sma heu lin heu_lin diff
+1 sma heu heu heu_heu same

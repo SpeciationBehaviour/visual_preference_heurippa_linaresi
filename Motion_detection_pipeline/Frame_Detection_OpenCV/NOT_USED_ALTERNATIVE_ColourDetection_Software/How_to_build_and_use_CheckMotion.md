@@ -102,5 +102,5 @@ For arg6, provide the maximum value of blue in RGB code.
 For arg7, provide the maximum value of green in RGB code.
 For arg8, provide the maximum value of red in RGB code.
 
-As an example: CheckMotion.exe C:/Users/melro/Desktop/Preference_Mel_Cyd/171208/Melpomene 3.mp4 10 20 30 100 150 200
+As an example: CheckMotion.exe YOUR_DIRECTORY 3.mp4 10 20 30 100 150 200
 Additional output information can be added. See comments in CheckMotion.cpp for details.

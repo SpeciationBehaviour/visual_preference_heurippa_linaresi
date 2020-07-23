@@ -15,7 +15,7 @@
 //and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 //The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 // "
-//A lot of fragments in this code also come from CheckMotion_Clean_and_Final.cpp, written by Chi-Yun Kuo and Alexander Hausmann
+//A lot of fragments in this code also come from CheckMotion.cpp, written by Chi-Yun Kuo and Alexander Hausmann
 #include <opencv/cv.hpp>
 
 //C++

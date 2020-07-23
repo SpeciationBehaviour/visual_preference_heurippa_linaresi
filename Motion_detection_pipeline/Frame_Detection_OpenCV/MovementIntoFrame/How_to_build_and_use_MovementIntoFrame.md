@@ -97,6 +97,6 @@ For arg7, provide the proportion of pixels in heigth being of interest, as seen 
 For arg8, provide the proportion of pixels in width being of interest, as seen from the right part of the video.
 For arg9, type y for producing an example png of the first frame with the mask of the ignored region in the frame. Type n for not producing this.
 
-As an example: MovementIntoFrame.exe C:/Users/melro/Desktop/Preference_Mel_Cyd/171208/Melpomene 3.mp4 80 10 0.2 0.2 0.2 0.2 y
+As an example: MovementIntoFrame.exe YOUR_DIRECTORY 3.mp4 80 10 0.2 0.2 0.2 0.2 y
 
 If all the inputs are correct, the program will start outputting frame numbers, followed by a "done" at the end.

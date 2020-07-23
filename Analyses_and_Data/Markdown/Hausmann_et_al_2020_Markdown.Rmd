@@ -1,5 +1,5 @@
 ---
-title: "Light environment influences the strength of mating behaviours during the early stages of divergence in tropical butterflies"
+title: "Light environment influences mating behaviours during the early stages of divergence in tropical butterflies"
 author: "Alexander E. Hausmann"
 date: "last edited: `r format(Sys.time(), '%d %B %Y')`"
 output: 
@@ -12,6 +12,7 @@ extra_dependencies: ["xcolor","formatR"]
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/Hausmann/Desktop/heurippa_manuscript_final/Analyses_and_Data/')
 ```
 ```{r, include=FALSE}
 library(knitr)
@@ -32,17 +33,12 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
 **Note**: to a point estimate for posterior distributions, we will use (unconventionally) the **mean** here (not the median, as most people do). The reason for that is that we will perform a lot of "posterior calculus" below. For example, for the Gardner-Altman plots below, we will plot the estimators of two groups, say A and B, as well as the estimator for the difference between these two groups. Now, median(B)-median(A) does most likely not equal median(B-A). But mean(B)-mean(A) equals mean(B-A). Therefore, for all point estimators to add up to values that make sense as a whole, we have to use the mean. To describe the 95% credible interval (CrI), we will use (as quite common), the 95% equal-tailed interval. Alternatively, one could use the high density interval.
 
-Set working directory.
-```{r}
-setwd("C:/Users/Hausmann/Desktop/heurippa_manuscript_final/Analyses_and_Data/")
-```
-
-Call `plot_proportion_stats.R`{.R}, which contains a function that will later be used for producing the stripchart graphs. We outsourced this function to make the Markdown more concise.
+Call `plot_proportion_stats.R`{.R}, which contains a function that will later be used for producing the stripchart graphs. We outsourced this function to GitHub to make this Markdown more concise.
 ```{r}
 source("https://raw.githubusercontent.com/SpeciationBehaviour/visual_preference_heurippa_linaresi/master/Analyses_and_Data/Skripts_called_from_Markdown/Plot_Proportion_Stats.R")
 ```
 
-Call `other_plot_functions.R`{.R} which contains functions that will be used below for plotting and which are saved in a separate script to make this Mardown more concise.
+Call `other_plot_functions.R`{.R} which contains functions that will be used below for plotting and which are saved in a separate script, again, to make this Mardown more concise.
 ```{r}
 source("https://raw.githubusercontent.com/SpeciationBehaviour/visual_preference_heurippa_linaresi/master/Analyses_and_Data/Skripts_called_from_Markdown/other_plot_functions.R")
 ```
@@ -864,13 +860,52 @@ mod2.216 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC.z
 mod2.217 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=44))
 ```
 
-Calculate LOOIC and WAIC for `mod2.2_red`{.R} and all nested, reduced models.
+Calculate LOOIC and WAIC for `mod2.2_red`{.R} and all nested, reduced models. We do this in a big chunk of code because (unlike for the pure males), these models are too big to allocate enough memory for running them all in one line.
 ```{r}
-all_looic<-c(loo(mod2.2_red)$estimates[3,1],sapply(0:17,function(x) loo(get(paste0("mod2.2",ifelse(x<10,paste0("0",x),x))))$estimates[3,1]))
-all_waic<-c(waic(mod2.2_red)$estimates[3,1],sapply(0:17,function(x) waic(get(paste0("mod2.2",ifelse(x<10,paste0("0",x),x))))$estimates[3,1]))
+all_looic<-rep(NA,19)
+all_looic[1]<-loo(mod2.2_red)$estimates[3,1]
+all_looic[2]<-loo(mod2.200)$estimates[3,1]
+all_looic[3]<-loo(mod2.201)$estimates[3,1]
+all_looic[4]<-loo(mod2.202)$estimates[3,1]
+all_looic[5]<-loo(mod2.203)$estimates[3,1]
+all_looic[6]<-loo(mod2.204)$estimates[3,1]
+all_looic[7]<-loo(mod2.205)$estimates[3,1]
+all_looic[8]<-loo(mod2.206)$estimates[3,1]
+all_looic[9]<-loo(mod2.207)$estimates[3,1]
+all_looic[10]<-loo(mod2.208)$estimates[3,1]
+all_looic[11]<-loo(mod2.209)$estimates[3,1]
+all_looic[12]<-loo(mod2.210)$estimates[3,1]
+all_looic[13]<-loo(mod2.211)$estimates[3,1]
+all_looic[14]<-loo(mod2.212)$estimates[3,1]
+all_looic[15]<-loo(mod2.213)$estimates[3,1]
+all_looic[16]<-loo(mod2.214)$estimates[3,1]
+all_looic[17]<-loo(mod2.215)$estimates[3,1]
+all_looic[18]<-loo(mod2.216)$estimates[3,1]
+all_looic[19]<-loo(mod2.217)$estimates[3,1]
+
+all_waic<-rep(NA,19)
+all_waic[1]<-waic(mod2.2_red)$estimates[3,1]
+all_waic[2]<-waic(mod2.200)$estimates[3,1]
+all_waic[3]<-waic(mod2.201)$estimates[3,1]
+all_waic[4]<-waic(mod2.202)$estimates[3,1]
+all_waic[5]<-waic(mod2.203)$estimates[3,1]
+all_waic[6]<-waic(mod2.204)$estimates[3,1]
+all_waic[7]<-waic(mod2.205)$estimates[3,1]
+all_waic[8]<-waic(mod2.206)$estimates[3,1]
+all_waic[9]<-waic(mod2.207)$estimates[3,1]
+all_waic[10]<-waic(mod2.208)$estimates[3,1]
+all_waic[11]<-waic(mod2.209)$estimates[3,1]
+all_waic[12]<-waic(mod2.210)$estimates[3,1]
+all_waic[13]<-waic(mod2.211)$estimates[3,1]
+all_waic[14]<-waic(mod2.212)$estimates[3,1]
+all_waic[15]<-waic(mod2.213)$estimates[3,1]
+all_waic[16]<-waic(mod2.214)$estimates[3,1]
+all_waic[17]<-waic(mod2.215)$estimates[3,1]
+all_waic[18]<-waic(mod2.216)$estimates[3,1]
+all_waic[19]<-waic(mod2.217)$estimates[3,1]
 ```
 
-To create model weights based on WAIC, we use the same method as above. 
+To create model weights based on WAIC, we use the same method as above.
 ```{r}
 ic_diffs <- all_waic - min(all_waic)
 out <- exp(-ic_diffs / 2)
@@ -2285,7 +2320,7 @@ mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heuri
 invisible(dev.off())
 ```
 
-Show png we just made
+Show png we just made. The resolution in this HTML is unfortunately a bit too low to see the x-axis well enough (but it's well visible in the original PNG). From left to right: *lin*, backcross to *lin* without red, backcross to *lin* with red, F1, backcross to *heu*, *heu*. Left in each panel are data from poorly lit *heu* mounted female, right are data from brightly lit *heu* mounted female.
 ```{r}
 suppl_fig4<-readPNG("Graphs/supplementary_figure4.png")
 grid.raster(suppl_fig4)
@@ -2606,7 +2641,7 @@ tetrad_fig(prop_heu_lin=prop_heu_lin,
 invisible(dev.off())
 ```
 
-We convert the pdf to png, so we have both file types.
+We convert the pdf to png, so we have both file types. Unfortunately, the purple dot showing the estimator in the center of each CrI for the prediction derived from the mounted female data is not showing up after the conversion. It is there in the pdf though!
 ```{r}
 pdf_convert("Graphs/figure3.pdf",filenames="Graphs/figure3.png",dpi=300)
 ```
