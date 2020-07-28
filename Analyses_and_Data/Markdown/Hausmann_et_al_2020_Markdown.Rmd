@@ -136,7 +136,7 @@ suppressMessages(suppressWarnings(library(MASS)))
 
 Keep all strings as characters and change the relevant columns to factors later.
 ```{r}
-pref_stat<-read.csv("Data/HC_TLC_choice_all_static.csv",header=T,stringsAsFactors = F)
+pref_stat<-read.csv("Data/mounted_female_data.csv",header=T,stringsAsFactors = F)
 ```
 
 One row of the table represents one single interaction between a male and a mounted female.
