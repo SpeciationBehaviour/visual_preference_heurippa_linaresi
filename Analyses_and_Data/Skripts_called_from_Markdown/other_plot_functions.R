@@ -1,6 +1,6 @@
 ####### OUTSOURCED GRAPH FUNCTIONS FROM RMARKDOWN
 
-# Written by A.E. Hausmann (last update April 29 2020)
+# Written by A.E. Hausmann (last update October 25 2020)
 
 #Open range plot for plotting of the interaction terms.
 #This simply creates an empty plot and adds axes to it.
