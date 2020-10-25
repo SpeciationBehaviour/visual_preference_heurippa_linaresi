@@ -315,59 +315,45 @@ interact3<-function(col_range=c(0.2,0.8)){
   max2<-max(c(pref_stat_TLC_HC$log_light_TLC,
               pref_stat_BC$log_light_TLC),na.rm=T)
   
-  #Change scale of min and max to centered and scaled variable for heu and lin male dataset
-  min1_trans<-as.numeric(scale(min1,attr(pref_stat_TLC_HC$log_light_HC.z,"scaled:center"),attr(pref_stat_TLC_HC$log_light_HC.z,"scaled:scale")))
-  max1_trans<-as.numeric(scale(max1,attr(pref_stat_TLC_HC$log_light_HC.z,"scaled:center"),attr(pref_stat_TLC_HC$log_light_HC.z,"scaled:scale")))
-  
-  min2_trans<-as.numeric(scale(min2,attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:center"),attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:scale")))
-  max2_trans<-as.numeric(scale(max2,attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:center"),attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:scale")))
-  
+
   #Number of sample intervals between the extremes
   n<-50
   
   #Step size for intervals
-  by1<-abs(diff(c(min1_trans,max1_trans)))/(n-1)
-  by2<-abs(diff(c(min2_trans,max2_trans)))/(n-1)
+  by1<-abs(diff(c(min1,max1)))/(n-1)
+  by2<-abs(diff(c(min2,max2)))/(n-1)
   
   #Define newdata for later predict function. Sample along the minima and
   #maxima of the respective light measures for lin males.
-  grdi1<-expand.grid(log_light_HC.z=seq(min1_trans,max1_trans,by1),
-                     log_light_TLC.z=seq(min2_trans,max2_trans,by2),
+  grdi1<-expand.grid(log_light_HC=seq(min1,max1,by1),
+                     log_light_TLC=seq(min2,max2,by2),
                      type="TLC")
   #Now predict
   predo1<-predict(mod1.2,grdi1,type="response",re_formula = NULL,
                   allow_new_levels =T)[,1]
   #Same definition of newdata, now for heu males
-  grdi2<-expand.grid(log_light_HC.z=seq(min1_trans,max1_trans,by1),
-                     log_light_TLC.z=seq(min2_trans,max2_trans,by2),
+  grdi2<-expand.grid(log_light_HC=seq(min1,max1,by1),
+                     log_light_TLC=seq(min2,max2,by2),
                      type="HC")
   #Prediction for heu males
   predo2<-predict(mod1.2,grdi2,type="response",re_formula = NULL,
                   allow_new_levels =T)[,1]
   
-  #Now repeat the same for the backcross males!
-  #Rescale
-  min1_trans_n<-as.numeric(scale(min1,attr(pref_stat_BC$log_light_HC.z,"scaled:center"),attr(pref_stat_BC$log_light_HC.z,"scaled:scale")))
-  max1_trans_n<-as.numeric(scale(max1,attr(pref_stat_BC$log_light_HC.z,"scaled:center"),attr(pref_stat_BC$log_light_HC.z,"scaled:scale")))
-  
-  min2_trans_n<-as.numeric(scale(min2,attr(pref_stat_BC$log_light_TLC.z,"scaled:center"),attr(pref_stat_BC$log_light_TLC.z,"scaled:scale")))
-  max2_trans_n<-as.numeric(scale(max2,attr(pref_stat_BC$log_light_TLC.z,"scaled:center"),attr(pref_stat_BC$log_light_TLC.z,"scaled:scale")))
-  
   #Step size
-  by1_n<-abs(diff(c(min1_trans_n,max1_trans_n)))/(n-1)
-  by2_n<-abs(diff(c(min2_trans_n,max2_trans_n)))/(n-1)
+  by1_n<-abs(diff(c(min1,max1)))/(n-1)
+  by2_n<-abs(diff(c(min2,max2)))/(n-1)
   
   #Newdata for non-red males
-  grdi3<-expand.grid(log_light_HC.z=seq(min1_trans_n,max1_trans_n,by1_n),
-                     log_light_TLC.z=seq(min2_trans_n,max2_trans_n,by2_n),
+  grdi3<-expand.grid(log_light_HC=seq(min1,max1,by1_n),
+                     log_light_TLC=seq(min2,max2,by2_n),
                      redYN="N")
   #Prediction
   predo3<-predict(mod2.2,grdi3,type="response",re_formula = NULL,
                   allow_new_levels =T)[,1]
   
   #Newdata for males with red
-  grdi4<-expand.grid(log_light_HC.z=seq(min1_trans_n,max1_trans_n,by1_n),
-                     log_light_TLC.z=seq(min2_trans_n,max2_trans_n,by2_n),
+  grdi4<-expand.grid(log_light_HC=seq(min1,max1,by1_n),
+                     log_light_TLC=seq(min2,max2,by2_n),
                      redYN="Y")
   #Prediction
   predo4<-predict(mod2.2,grdi4,type="response",re_formula = NULL,
@@ -387,8 +373,8 @@ interact3<-function(col_range=c(0.2,0.8)){
   #lin males:
   
   #Open plot fitting the ranges of prediction
-  plot(1,1,ylim=c(min2_trans-by2,max2_trans+by2),
-       xlim=c(min1_trans-by1,max1_trans+by1),xaxs="i",yaxs="i",xaxt="n",
+  plot(1,1,ylim=c(min2-by2,max2+by2),
+       xlim=c(min1-by1,max1+by1),xaxs="i",yaxs="i",xaxt="n",
        yaxt="n",xlab="",ylab="",type="n")
   #Give each prediction a colour (red for high preference for heu, blue
   #for hight preference for lin)
@@ -424,9 +410,9 @@ interact3<-function(col_range=c(0.2,0.8)){
   mtext(substitute(paste(italic('H. t. linaresi'))),3,line=0.1,cex=0.65)
   
   #Add yaxis
-  yaxis_val.z<-as.numeric(scale(log10(xaxis_val*1000),attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:center"),attr(pref_stat_TLC_HC$log_light_TLC.z,"scaled:scale")))
-  axis(2,at=yaxis_val.z,paste0(xaxis_val,"k"),line=-0.4,lwd=0,cex.axis=0.85,las=2)
-  axis(2,at=yaxis_val.z,labels=F,tck=-0.03)
+  yaxis_val<-log10(xaxis_val*1000)
+  axis(2,at=yaxis_val,paste0(xaxis_val,"k"),line=-0.4,lwd=0,cex.axis=0.85,las=2)
+  axis(2,at=yaxis_val,labels=F,tck=-0.03)
   
   #Add xaxis
   mtext(substitute(paste("Illuminance at mounted  ",italic('H. t. linaresi')," female [",italic('lux'),"]","                                                         ")),2,line=2,cex=0.65)
@@ -435,8 +421,8 @@ interact3<-function(col_range=c(0.2,0.8)){
   #Repeat for heu!
   
   par(mar=c(0,0.4,1.6,0.4))
-  plot(1,1,ylim=c(min2_trans-by2,max2_trans+by2),
-       xlim=c(min1_trans-by1,max1_trans+by1),xaxs="i",yaxs="i",xaxt="n",
+  plot(1,1,ylim=c(min2-by2,max2+by2),
+       xlim=c(min1-by1,max1+by1),xaxs="i",yaxs="i",xaxt="n",
        yaxt="n",xlab="",ylab="",type="n")
   col_dots<-bluered[sapply(1:length(predo2),function(x) which.min(abs(seq(rango[1],rango[2],(1/999)*diff(rango))-predo2[x])))]
   invisible(sapply(1:length(predo2),function(x) polygon(c(grdi2[x,1]-by1,grdi2[x,1]+by1,
@@ -469,8 +455,8 @@ interact3<-function(col_range=c(0.2,0.8)){
   #Backcrosses
   
   par(mar=c(0,0.4,1.6,0.4))
-  plot(1,1,ylim=c(min2_trans_n-by2_n,max2_trans_n+by2_n),
-       xlim=c(min1_trans_n-by1_n,max1_trans_n+by1_n),xaxs="i",yaxs="i",xaxt="n",
+  plot(1,1,ylim=c(min2-by2_n,max2+by2_n),
+       xlim=c(min1-by1_n,max1+by1_n),xaxs="i",yaxs="i",xaxt="n",
        yaxt="n",xlab="",ylab="",type="n")
   col_dots<-bluered[sapply(1:length(predo3),function(x) which.min(abs(seq(rango[1],rango[2],(1/999)*diff(rango))-predo3[x])))]
   invisible(sapply(1:length(predo3),function(x) polygon(c(grdi3[x,1]-by1_n,grdi3[x,1]+by1_n,
@@ -494,26 +480,26 @@ interact3<-function(col_range=c(0.2,0.8)){
        col="white")
   
   #Add median measures
-  abline(v=median(pref_stat_BC$log_light_HC.z,na.rm = T),lty="dashed",
+  abline(v=median(pref_stat_BC$log_light_HC,na.rm = T),lty="dashed",
          col="yellow")
-  abline(h=median(pref_stat_BC$log_light_TLC.z,na.rm = T),lty="dashed",
+  abline(h=median(pref_stat_BC$log_light_TLC,na.rm = T),lty="dashed",
          col="yellow")
   
   mtext(substitute(paste("Non-Red BC to ",italic('H. t. linaresi'))),3,line=0.1,cex=0.65)
   
-  yaxis_val.z<-as.numeric(scale(log10(xaxis_val*1000),attr(pref_stat_BC$log_light_TLC.z,"scaled:center"),attr(pref_stat_BC$log_light_TLC.z,"scaled:scale")))
-  axis(2,at=yaxis_val.z,paste0(xaxis_val,"k"),line=-0.4,lwd=0,cex.axis=0.85,las=2)
-  axis(2,at=yaxis_val.z,labels=F,tck=-0.03)
+  yaxis_val<-log10(xaxis_val*1000)
+  axis(2,at=yaxis_val,paste0(xaxis_val,"k"),line=-0.4,lwd=0,cex.axis=0.85,las=2)
+  axis(2,at=yaxis_val,labels=F,tck=-0.03)
   
-  xaxis_val.z<-as.numeric(scale(log10(xaxis_val*1000),attr(pref_stat_BC$log_light_HC.z,"scaled:center"),attr(pref_stat_BC$log_light_HC.z,"scaled:scale")))
-  axis(1,at=xaxis_val.z,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
-  axis(1,at=xaxis_val.z,labels=F,tck=-0.03)
+  xaxis_val<-log10(xaxis_val*1000)
+  axis(1,at=xaxis_val,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
+  axis(1,at=xaxis_val,labels=F,tck=-0.03)
   
   
   
   par(mar=c(0,0.4,1.6,0.4))
-  plot(1,1,ylim=c(min2_trans_n-by2_n,max2_trans_n+by2_n),
-       xlim=c(min1_trans_n-by1_n,max1_trans_n+by1_n),xaxs="i",yaxs="i",xaxt="n",
+  plot(1,1,ylim=c(min2-by2_n,max2+by2_n),
+       xlim=c(min1-by1_n,max1+by1_n),xaxs="i",yaxs="i",xaxt="n",
        yaxt="n",xlab="",ylab="",type="n")
   col_dots<-bluered[sapply(1:length(predo4),function(x) which.min(abs(seq(rango[1],rango[2],(1/999)*diff(rango))-predo4[x])))]
   invisible(sapply(1:length(predo4),function(x) polygon(c(grdi4[x,1]-by1_n,grdi4[x,1]+by1_n,
@@ -537,16 +523,16 @@ interact3<-function(col_range=c(0.2,0.8)){
        col="white")
   
   #Add median measures
-  abline(v=median(pref_stat_BC$log_light_HC.z,na.rm = T),lty="dashed",
+  abline(v=median(pref_stat_BC$log_light_HC,na.rm = T),lty="dashed",
          col="yellow")
-  abline(h=median(pref_stat_BC$log_light_TLC.z,na.rm = T),lty="dashed",
+  abline(h=median(pref_stat_BC$log_light_TLC,na.rm = T),lty="dashed",
          col="yellow")
   
   mtext(substitute(paste("Red BC to ",italic('H. t. linaresi'))),3,line=0.1,cex=0.65)
   
-  xaxis_val.z<-as.numeric(scale(log10(xaxis_val*1000),attr(pref_stat_BC$log_light_HC.z,"scaled:center"),attr(pref_stat_BC$log_light_HC.z,"scaled:scale")))
-  axis(1,at=xaxis_val.z,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
-  axis(1,at=xaxis_val.z,labels=F,tck=-0.03)
+  xaxis_val<-log10(xaxis_val*1000)
+  axis(1,at=xaxis_val,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
+  axis(1,at=xaxis_val,labels=F,tck=-0.03)
   
   
   #Now we draw the legend
