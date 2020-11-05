@@ -1,6 +1,6 @@
 ####### OUTSOURCED GRAPH FUNCTIONS FROM RMARKDOWN
 
-# Written by A.E. Hausmann (last update October 25 2020)
+# Written by A.E. Hausmann (last update November 05 2020)
 
 #Open range plot for plotting of the interaction terms.
 #This simply creates an empty plot and adds axes to it.
@@ -406,6 +406,12 @@ interact3<-function(col_range=c(0.2,0.8)){
        "E",font=2,cex=1.5,
        col="white")
   
+  #Add median measures
+  abline(v=median(pref_stat_TLC_HC$log_light_HC,na.rm = T),lty="dashed",
+         col="yellow")
+  abline(h=median(pref_stat_TLC_HC$log_light_TLC,na.rm = T),lty="dashed",
+         col="yellow")
+  
   #Add label
   mtext(substitute(paste(italic('H. t. linaresi'))),3,line=0.1,cex=0.65)
   
@@ -444,6 +450,12 @@ interact3<-function(col_range=c(0.2,0.8)){
        par("usr")[4]-(0.15/par("pin")[2])*diff(par("usr")[3:4]),
        "F",font=2,cex=1.5,
        col="white")
+  
+  #Add median measures
+  abline(v=median(pref_stat_TLC_HC$log_light_HC,na.rm = T),lty="dashed",
+         col="yellow")
+  abline(h=median(pref_stat_TLC_HC$log_light_TLC,na.rm = T),lty="dashed",
+         col="yellow")
   
   mtext(substitute(paste(italic('H. heurippa'))),3,line=0.1,cex=0.65)
   
@@ -491,9 +503,9 @@ interact3<-function(col_range=c(0.2,0.8)){
   axis(2,at=yaxis_val,paste0(xaxis_val,"k"),line=-0.4,lwd=0,cex.axis=0.85,las=2)
   axis(2,at=yaxis_val,labels=F,tck=-0.03)
   
-  xaxis_val<-log10(xaxis_val*1000)
-  axis(1,at=xaxis_val,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
-  axis(1,at=xaxis_val,labels=F,tck=-0.03)
+  xaxis_val_mod<-log10(xaxis_val*1000)
+  axis(1,at=xaxis_val_mod,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
+  axis(1,at=xaxis_val_mod,labels=F,tck=-0.03)
   
   
   
@@ -530,10 +542,8 @@ interact3<-function(col_range=c(0.2,0.8)){
   
   mtext(substitute(paste("Red BC to ",italic('H. t. linaresi'))),3,line=0.1,cex=0.65)
   
-  xaxis_val<-log10(xaxis_val*1000)
-  axis(1,at=xaxis_val,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
-  axis(1,at=xaxis_val,labels=F,tck=-0.03)
-  
+  axis(1,at=xaxis_val_mod,paste0(xaxis_val,"k"),line=-0.7,lwd=0,cex.axis=0.85)
+  axis(1,at=xaxis_val_mod,labels=F,tck=-0.03)
   
   #Now we draw the legend
   
