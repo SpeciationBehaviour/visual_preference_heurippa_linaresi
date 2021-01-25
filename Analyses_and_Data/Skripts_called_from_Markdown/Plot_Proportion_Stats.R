@@ -392,6 +392,10 @@
 #It still has to be set.
 #Default is c(T,T)
 
+#suppress_est1_if2
+#Whether sub1_col estimators will be suppressed if sub2_col estimators are present.
+#Default is FALSE
+
 #show_p_values_plot
 #Whether to show p-values resulting from the statistical test in the plot (TRUE) or whether not (FALSE)
 #Has to be a boolean vector of size 2. First entry stands for decision concerning
@@ -809,6 +813,7 @@ plot_proportion_stats<-function(input_data,
                                 par_mar=c(),
                                 show_estimators=c(T,T), ##matters only if either stats_for_1sub or stats_for_1sub ==T
                                 show_p_values_plot=c(T,T), ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and either stats_for_1sub or stats_for_2sub ==T
+                                suppress_est1_if2=F, ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and stats_for_1sub and stats_for_2sub ==T and sub1_col and sub2_col are set
                                 sub1_labels,
                                 italics_sub1=T,
                                 sub2_labels, ## only matters if sub2_col was set
@@ -1162,6 +1167,10 @@ plot_proportion_stats<-function(input_data,
       if(!is.character(sub2_col[!is.na(sub2_col)])){
         stop("If you don't want to have sub2_col, set to c(), NA or ''. Otherwise set to a character string vector of length 1 or (if you want to apply a differen sub2_col to your different sub1_states), set it to a vector equal in length as the sub1_states vector.")
       }
+      #If all are equal, just make it one vector
+      if(sum(is.na(sub2_col))==0&length(unique(sub2_col))==1){
+        sub2_col<-sub2_col[1]
+      }
       if(sum(gsub(" ","",sub2_col[!is.na(sub2_col)])=="")==0){
         if(sum(sub2_col[!is.na(sub2_col)]%in%names(tfinal))!=sum(!is.na(sub2_col))){
           stop("Not all columns named in sub2_col can be found in the table's column names.")
@@ -1431,6 +1440,9 @@ plot_proportion_stats<-function(input_data,
   } else{
     if(sub1_2_in_one_model){
       if(length(sub2_states)>0){
+        if(length(sub2_col)>1){
+          stop("sub1_2_in_one_model==T is unfortunately not compatible with multiple elements of sub2_col. To make it work, you have to select one sub2_col and it will count for all the sub1_states.")
+        }
         if(length(unique(sapply(1:length(sub2_states),function(x) length(sub2_states[[x]]))))!=1){
           stop("sub2_states has to have the exact same values for each sub1_state if you set sub1_2_in_one_model to TRUE. Otherwise it doesn't really make sense to run the model under sub1_2_in_one_model=TRUE.")
         }
@@ -1669,7 +1681,7 @@ plot_proportion_stats<-function(input_data,
           }
         }
         if(sub1_2_in_one_model&check_sub2_states&stats_for_1sub&stats_for_2sub&type_of_stats!="freq_binom"){
-          if(nchar(other_effects_sub1)>=1+nchar(sub2_col)){
+          if(nchar(other_effects_sub1)>=(1+nchar(sub2_col))){
             if(!(grepl(paste0(sub1_col,":",sub2_col),other_effects_sub1)|grepl(paste0(sub2_col,":",sub1_col),other_effects_sub1)|substr(other_effects_sub1,1,1+nchar(sub2_col))==paste0("*",sub2_col))){
               stop("Since you set sub1_2_in_one_model to TRUE, your model term has to include an interaction term between sub1_col and sub2_col. Ideally you would set your other_effects_sub1 to start with '*' and after that put your sub2_col.")
             }
@@ -1906,15 +1918,15 @@ plot_proportion_stats<-function(input_data,
         stop("test_type can only be typeIII_anova, as you set sub1_2_in_one_model to TRUE.")
       }
       if(stats_for_1sub){
-        if(grepl(sub1_col,other_effects_sub1)){
+        if(grepl(sub1_col,other_effects_sub1)&test_type=="LRT"){
           stop("test_type can only be typeIII_anova, as your sub1_col appears in other_effects_sub1.")
         } else{
-          if(substr(trimws(other_effects_sub1),1,1)=="*"){
+          if((substr(trimws(other_effects_sub1),1,1)=="*")&test_type=="LRT"){
             stop("test_type can only be typeIII_anova, as other_effects_sub1 indicates that sub1_col is involved in an interaction.")
           }
         }
       }
-        
+      
       if(check_sub2_states&stats_for_2sub){
         if(sum(grepl(sub2_col[!is.na(sub2_col)],other_effects_sub2))>0){
           stop("test_type can only be typeIII_anova, as your sub2_col appears in other_effects_sub2.")
@@ -1926,7 +1938,7 @@ plot_proportion_stats<-function(input_data,
       }
     }
   }
-      
+  
   #scale_center
   if(type_of_stats!="freq_binom"&((stats_for_1sub&gsub(" ","",other_effects_sub1)!="")|(stats_for_2sub&gsub(" ","",other_effects_sub2)!=""))){
     if(length(scale_center)!=1){
@@ -3436,11 +3448,11 @@ plot_proportion_stats<-function(input_data,
             # }
             
             #get the the p value for the subset column (same for both)
-            #This is not needed if simple LRT test is to be performed
-            anova.res<-joint_tests(full_MODEL)
             #In case we let both subset columns run in the same model
             #we extract the p value for sub1_col as well as for the interaction terms
             if(sub1_2_in_one_model1){
+              #This is not needed if simple LRT test is to be performed
+              anova.res<-joint_tests(full_MODEL)
               p_val_glmer1<-anova.res$p.value[anova.res$`model term`==subset_col]
               emmeans_interact<-summary(eval(parse(text=paste0("emmeans(full_MODEL,pairwise ~ ",sub2_col_for_both," | ",subset_col,")"))))
               p_val_glmer2<-cbind(emmeans_interact$contrasts[subset_col],p.value=emmeans_interact$contrasts$p.value)
@@ -3455,11 +3467,14 @@ plot_proportion_stats<-function(input_data,
                 
                 if(null_MODEL$error_text!="No error."){
                   warning(null_MODEL$error_text)
+                  p_val_glmer<-NA
+                } else{
+                  p_val_glmer<-anova(full_MODEL,null_MODEL$model_out,test="LRT")$`Pr(>Chisq)`[2]
                 }
                 
-                p_val_glmer<-anova(full_MODEL,null_MODEL$model_out,test="LRT")$`Pr(>Chisq)`[2]
-                
               } else{
+                #This is not needed if simple LRT test is to be performed
+                anova.res<-joint_tests(full_MODEL)
                 p_val_glmer<-anova.res$p.value[anova.res$`model term`==subset_col]
               }
             }
@@ -3733,7 +3748,7 @@ plot_proportion_stats<-function(input_data,
                       problem_col=problem_col,posterior=NA,parameter_post=NA))
         }
       }
-     
+      
       #Reset old contrasts
       options(contrasts = old_contr$contrasts)
       
@@ -5459,6 +5474,7 @@ plot_proportion_stats<-function(input_data,
         #If we have categories in the second subset level
         if(check_sub2_states&sum(subtest>1)>0){
           
+          
           #Local jittering
           
           #First, we will do an evaluation of the dot_size setting.
@@ -5469,9 +5485,9 @@ plot_proportion_stats<-function(input_data,
           #have to test if this is the case.
           
           #First for the case where all are subsetted
-          if(sum(true_exist>1)==sum(true_exist>0)){
+          if(length(subtest)==sum(subtest>0)){
+
             if(length(tfinal$positioning)>0){
-              
               #Check if errors due to dot_size.
               
               jitter_call<-"(verbose=F,lwd=dot_lwd,fact_coord=tfinal$positioning,
@@ -5502,7 +5518,10 @@ plot_proportion_stats<-function(input_data,
                     what_lev<-sub2_states[[checkers]]
                     testero<-(tfinal[,ifelse(length(sub2_col)>1,sub2_col[checkers],sub2_col)][tfinal$positioning_back_up==checkers]==what_lev[2])[1]
                     if(testero){
-                      pos_in_plot_n[tfinal$positioning_back_up==checkers]<-pos_in_plot_n[tfinal$positioning_back_up==checkers]+2*(checkers-pos_in_plot_n[tfinal$positioning_back_up==checkers])
+                      testero2<-sum(((pos_in_plot_n[tfinal$positioning_back_up==checkers])>tfinal$positioning[tfinal$positioning_back_up==checkers]))==0
+                      if(testero2){
+                        pos_in_plot_n[tfinal$positioning_back_up==checkers]<-pos_in_plot_n[tfinal$positioning_back_up==checkers]+2*(tfinal$positioning[tfinal$positioning_back_up==checkers]-pos_in_plot_n[tfinal$positioning_back_up==checkers])
+                      }
                     }
                   }
                 }
@@ -5579,7 +5598,10 @@ plot_proportion_stats<-function(input_data,
                     what_lev<-sub2_states[[checkers]]
                     testero<-(tfinal[,ifelse(length(sub2_col)>1,sub2_col[checkers],sub2_col)][tfinal$positioning_back_up==checkers]==what_lev[2])[1]
                     if(testero){
-                      pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]<-pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]+2*(checkers-pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers])
+                      testero2<-sum(((tfinal$positioning[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers])<pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]))==0
+                      if(testero2){
+                        pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]<-pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]+2*(tfinal$positioning[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers]-pos_in_plot_n_cat[tfinal$positioning_back_up[tfinal$positioning_back_up%in%which_one_categ]==checkers])
+                      }
                     }
                   }
                 }
@@ -5803,7 +5825,6 @@ plot_proportion_stats<-function(input_data,
         #And where they were not. First the case for separate models.
         
         if(sum(c("INTERACTION_TEST","FIRST_SUB_TEST")%in%names(testo))>0){
-          
           if(!is.na(testo[[1]][1])){
             
             sign_testo<-testo[[1]]
@@ -5824,18 +5845,24 @@ plot_proportion_stats<-function(input_data,
               is.sec_glmm<-stats_for_2sub&check_sub2_states&sum(subtest>1)>0&sum(true_exist>1)>0&show_p_values_plot[2]
               liner<-c(1000,0.9,1.8)[c(dim3_dec1,!is.sec_glmm&!dim3_dec1,is.sec_glmm&!dim3_dec1)]
               
+              positioning_of_bars<-list(sub1_pos_in_plot[CI_order],rep(-10000,length(CI_order)))[c(show_estimators[1],!show_estimators[1])][[1]]
+              #Remove sub1_col estimators if sub2_col subsetting is there (and wished by user)
+              if(suppress_est1_if2&is.sec_glmm){
+                positioning_of_bars[subtest[CI_order]>1]<-(-10000)
+              }
               if(length(CI_order)>2){
                 sign_coder(values=sign_testo,
-                           lino=liner,ticki=0.01,where=c(sub1_pos_in_plot[1],0.5*sum(sub1_panel_weights),sub1_pos_in_plot[length(sub1_pos_in_plot)]),
-                           bars_where=list(sub1_pos_in_plot[CI_order],rep(-10000,length(CI_order)))[c(show_estimators[1],!show_estimators[1])][[1]],
+                           lino=liner,ticki=0.01,
+                           where=c(sub1_pos_in_plot[1],0.5*sum(sub1_panel_weights),sub1_pos_in_plot[length(sub1_pos_in_plot)]),
+                           bars_where=positioning_of_bars,
                            conf=T,
                            width_mean_bar=width_mean_sub1,
                            width_error_sub1=width_error_sub1,
                            thickness_est_CI1=thickness_est_CI)
               } else{
                 sign_coder(values=sign_testo,
-                           lino=liner,ticki=0.015,where=list(sub1_pos_in_plot[CI_order],rep(-10000,length(CI_order)))[c(show_estimators[1],!show_estimators[1])][[1]],
-                           bars_where=list(sub1_pos_in_plot[CI_order],rep(-10000,length(CI_order)))[c(show_estimators[1],!show_estimators[1])][[1]],
+                           lino=liner,ticki=0.015,where=positioning_of_bars,
+                           bars_where=positioning_of_bars,
                            conf=T,
                            width_mean_bar=width_mean_sub1,
                            width_error_sub1=width_error_sub1,
