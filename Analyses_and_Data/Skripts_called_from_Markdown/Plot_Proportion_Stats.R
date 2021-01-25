@@ -1,4 +1,4 @@
-#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in mainly ~September 2019 - January 2020 (last update April 29 2020)
+#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in 2019 - 2021
 
 ##### Plot Courtship Proportion data with estimators and significance for
 ##### comparison of different groups (e.g. species) and/or subgroups.
