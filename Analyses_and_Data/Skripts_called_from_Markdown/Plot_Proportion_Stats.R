@@ -1,4 +1,4 @@
-#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in 2019 - 2020
+#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in mainly ~September 2019 - January 2020 (last update April 29 2020)
 
 ##### Plot Courtship Proportion data with estimators and significance for
 ##### comparison of different groups (e.g. species) and/or subgroups.
@@ -280,6 +280,32 @@
 #To avoid a notification message, you can set other_effects_sub2 to 
 #NA, c() (or NULL) or '' as well, to be clear that you are aware that
 #this parameter is of no relevance.
+
+#simplify_for_model
+#For type_of_stats==freq_glm_glmer or type_of_stats==bayes_glm_glmer
+#Indicates whether the table should be simplified for the model, as it
+#is simplified for the plot. This will only be done if the grouping
+#variable in the plot always has the same state among the other effects
+#of the GLM/GLMM.
+#Consider the following example: if your model looks like this: ~ species + (1|individual_ID),
+#and in each individual_ID is constantly the same species throughout the table
+#(which logically seems to make sense). And let's assume you have multiple
+#observations per individual in your table. Then, if simplify_for_model is TRUE, the program
+#will sum all the rows up by individual ID and run the model on this dataset.
+#Usually, you'd expect roughly the same outcome if simplify_for_model is TRUE or FALSE,
+#but results may slightly differ. However, simplify_for_model will require less runtime
+#for running the GLM/GLMM, which may be of relevance if your dataset is large.
+#Default is FALSE
+
+#test_type
+#The type of significance test performed if type_of_stats is 'freq_glm_glmer'
+#Can be either "LRT" or "typeIII_anova".
+#Under LRT, the full model is compared to a model reduced by 
+#sub1_col/sub2_col, respectively. 
+#Under typeIII_anova, the emmeans package is used to perform a type III Anova.
+#If sub1_2_in_one_model is TRUE or if either your sub1_col or your sub2_col
+#is involved in an interaction, test_type can only be "typeIII_anova".
+#Default is "LRT"
 
 #scale_center
 #Decision whether to scale and center all relevant numeric 
@@ -768,6 +794,8 @@ plot_proportion_stats<-function(input_data,
                                 dont_make_factor_glmm=c(), ## matters only if type_of_stats!="freq_binom" and type_of_stats!="bayes_own_brm" and either stats_for_1sub or stats_for_2sub ==T
                                 other_effects_sub1="", ## matters only if type_of_stats!="freq_binom" and sub1_col set and stats_for_1sub==F
                                 other_effects_sub2="", ## matters only if sub2_col was set and if type_of_stats!="freq_binom" and stats_for_2sub==F
+                                simplify_for_model=F, ## matters only if type_of_stats=="freq_glm_glmer" or == "bayes_glm_glmer" and either stats_for_1sub or stats_for_2sub ==T
+                                test_type="LRT", ## matters only if type_of_stats=="freq_glm_glmer" and either stats_for_1sub or stats_for_2sub ==T
                                 scale_center=F, ## matters only if type_of_stats!="freq_binom" and either stats_for_1sub & other_effects_sub1 set or if stats_for_2sub ==T and other_effects_sub2 set
                                 nsim_bayes=5000, ## matters only if type_of_stats=="bayes_glm_glmer"
                                 bayes_seedi=as.numeric(Sys.time()), ## matters only if type_of_stats=="bayes_glm_glmer"
@@ -780,7 +808,7 @@ plot_proportion_stats<-function(input_data,
                                 plot_dim=c(), ##matters only if output_dir was set
                                 par_mar=c(),
                                 show_estimators=c(T,T), ##matters only if either stats_for_1sub or stats_for_1sub ==T
-                                show_p_values_plot=c(T,T), ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and either stats_for_1sub or stats_for_1sub ==T
+                                show_p_values_plot=c(T,T), ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and either stats_for_1sub or stats_for_2sub ==T
                                 sub1_labels,
                                 italics_sub1=T,
                                 sub2_labels, ## only matters if sub2_col was set
@@ -1843,6 +1871,62 @@ plot_proportion_stats<-function(input_data,
     }
   }
   
+  
+  #simplify_for_model
+  if(stats_for_1sub|stats_for_2sub){
+    if(type_of_stats%in%c("freq_glm_glmer","bayes_glm_glmer")){
+      if(length(simplify_for_model)!=1){
+        stop("simplify_for_model has to be a boolean vector of length 1 (either TRUE or FALSE).")
+      }
+      if(!is.vector(simplify_for_model)|is.list(simplify_for_model)){
+        stop("simplify_for_model has to be a boolean vector of length 1 (either TRUE or FALSE).")
+      }
+      if(!simplify_for_model%in%0:1){
+        stop("simplify_for_model has to be boolean (T or F).")
+      }
+    }
+  }
+  
+  #test_type
+  if(stats_for_1sub|stats_for_2sub){
+    if(type_of_stats=="freq_glm_glmer"){
+      if(length(test_type)!=1){
+        stop("test_type has to be a character vector of length one.")
+      }
+      if(!is.vector(test_type)|is.list(test_type)){
+        stop("test_type has to be a character vector of length one.")
+      }
+      if(!is.character(test_type)){
+        stop("test_type has to be a character vector of length one.")
+      }
+      if(!test_type%in%c("LRT","typeIII_anova")){
+        stop("test_type has to be either LRT or typeIII_anova.")
+      }
+      if(sub1_2_in_one_model&test_type=="LRT"){
+        stop("test_type can only be typeIII_anova, as you set sub1_2_in_one_model to TRUE.")
+      }
+      if(stats_for_1sub){
+        if(grepl(sub1_col,other_effects_sub1)){
+          stop("test_type can only be typeIII_anova, as your sub1_col appears in other_effects_sub1.")
+        } else{
+          if(substr(trimws(other_effects_sub1),1,1)=="*"){
+            stop("test_type can only be typeIII_anova, as other_effects_sub1 indicates that sub1_col is involved in an interaction.")
+          }
+        }
+      }
+        
+      if(check_sub2_states&stats_for_2sub){
+        if(sum(grepl(sub2_col[!is.na(sub2_col)],other_effects_sub2))>0){
+          stop("test_type can only be typeIII_anova, as your sub2_col appears in other_effects_sub2.")
+        } else{
+          if(substr(trimws(other_effects_sub2),1,1)=="*"){
+            stop("test_type can only be typeIII_anova, as other_effects_sub2 indicates that sub2_col is involved in an interaction.")
+          }
+        }
+      }
+    }
+  }
+      
   #scale_center
   if(type_of_stats!="freq_binom"&((stats_for_1sub&gsub(" ","",other_effects_sub1)!="")|(stats_for_2sub&gsub(" ","",other_effects_sub2)!=""))){
     if(length(scale_center)!=1){
@@ -3062,9 +3146,14 @@ plot_proportion_stats<-function(input_data,
                       sub1_2_in_one_model1=F,
                       sub2_col_for_both=NA,
                       perform_GLM_GLMM=T,
-                      brm_model1=NA){
+                      brm_model1=NA,
+                      test_type="LRT"){
     
     if(perform_GLM_GLMM){
+      
+      #Reset the contrasts (more stable if interacting factors)
+      old_contr<-options("contrasts")
+      options(contrasts = c("contr.sum", "contr.poly"))
       
       #Create response column. If multiple columns, add them together
       #temp_court_spec1 stands for "successes"
@@ -3295,62 +3384,84 @@ plot_proportion_stats<-function(input_data,
             #Depending on whether a glmm or a glm were run.
             #Calculate p and overdispersal
             
-            #Find the fixed effects
-            other_eff_split_fac_test<-""
-            if(gsub(" ","",other_effects_expr)!=""){
-              other_effects_expr<-gsub(" ","",other_effects_expr)
-              other_eff_split_fac_test<-unlist(strsplit(unlist(strsplit(other_effects_expr, "\\+|\\:|\\=|\\}|\\{|\\[|\\]|\\/|\\-|\\&|\\*|\\~")[[1]]),"[\\\\]|[^[:print:]]",fixed=F))
-              other_eff_split_fac_test<-trimws(unique(other_eff_split_fac_test[suppressWarnings(is.na(as.numeric(other_eff_split_fac_test)))]))
-            }
             
-            dropout<-c()
-            for(unito in 1:length(other_eff_split_fac_test)){
-              if(grepl("\\|",other_eff_split_fac_test[unito])){
-                dropout<-c(dropout,unito)
-              } else{
-                if((!grepl("\\(",other_eff_split_fac_test[unito])&grepl("\\)",other_eff_split_fac_test[unito]))|(grepl("\\(",other_eff_split_fac_test[unito])&!grepl("\\)",other_eff_split_fac_test[unito]))){
-                  dropout<-c(dropout,unito)
-                }
-              }
-            }
+            #Here, I thought it'd be smart to do contr.sum coding within
+            #the GLMM, but it seems this is actually way more unstable
+            #Instead, contrasts are now recoded globally (and then changed back again)
             
-            other_eff_split_fac_test<-other_eff_split_fac_test[-dropout]
+            # #Find the fixed effects
+            # other_eff_split_fac_test<-""
+            # if(gsub(" ","",other_effects_expr)!=""){
+            #   other_effects_expr<-gsub(" ","",other_effects_expr)
+            #   other_eff_split_fac_test<-unlist(strsplit(unlist(strsplit(other_effects_expr, "\\+|\\:|\\=|\\}|\\{|\\[|\\]|\\/|\\-|\\&|\\*|\\~")[[1]]),"[\\\\]|[^[:print:]]",fixed=F))
+            #   other_eff_split_fac_test<-trimws(unique(other_eff_split_fac_test[suppressWarnings(is.na(as.numeric(other_eff_split_fac_test)))]))
+            # }
+            # 
+            # dropout<-c()
+            # for(unito in 1:length(other_eff_split_fac_test)){
+            #   if(grepl("\\|",other_eff_split_fac_test[unito])){
+            #     dropout<-c(dropout,unito)
+            #   } else{
+            #     if((!grepl("\\(",other_eff_split_fac_test[unito])&grepl("\\)",other_eff_split_fac_test[unito]))|(grepl("\\(",other_eff_split_fac_test[unito])&!grepl("\\)",other_eff_split_fac_test[unito]))){
+            #       dropout<-c(dropout,unito)
+            #     }
+            #   }
+            # }
+            # 
+            # other_eff_split_fac_test<-other_eff_split_fac_test[-dropout]
+            # 
+            # other_eff_split_fac_test<-c(subset_col,other_eff_split_fac_test[!(grepl("\\(",other_eff_split_fac_test)&grepl("\\)",other_eff_split_fac_test)&grepl("\\|",other_eff_split_fac_test))])
+            # other_eff_split_fac_test<-gsub("\\(","",other_eff_split_fac_test)
+            # other_eff_split_fac_test<-gsub("\\)","",other_eff_split_fac_test)
+            # other_eff_split_fac_test<-gsub("\\|","",other_eff_split_fac_test)
+            # other_eff_split_fac_test<-other_eff_split_fac_test[other_eff_split_fac_test!=""]
+            # 
+            # #Find factors
+            # find_fact<-sapply(1:length(other_eff_split_fac_test),function(x) is.factor(data_sub[,other_eff_split_fac_test[x]]))
             
-            other_eff_split_fac_test<-c(subset_col,other_eff_split_fac_test[!(grepl("\\(",other_eff_split_fac_test)&grepl("\\)",other_eff_split_fac_test)&grepl("\\|",other_eff_split_fac_test))])
-            other_eff_split_fac_test<-gsub("\\(","",other_eff_split_fac_test)
-            other_eff_split_fac_test<-gsub("\\)","",other_eff_split_fac_test)
-            other_eff_split_fac_test<-gsub("\\|","",other_eff_split_fac_test)
-            other_eff_split_fac_test<-other_eff_split_fac_test[other_eff_split_fac_test!=""]
+            # if(sum(find_fact)>0){
+            #   #Let the model run again, but with new contrasts (important for getting the right p value from type III anova)
+            #   add_contr<-paste0(",contrasts=list(",paste0(other_eff_split_fac_test[find_fact],"=contr.sum",collapse=","),")")
+            #   
+            #   if(grepl("\\|",other_effects_expr)){
+            #     function_call_FULL<-paste0("glmer(courtships~",subset_col,other_effects_expr,",family=binomial,data=data_sub",add_contr,")")
+            #   } else{
+            #     #If no other effects, perform GLM
+            #     function_call_FULL<-paste0("glm(courtships~",subset_col,other_effects_expr,",family=binomial,data=data_sub",add_contr,")")
+            #   }  
+            #   full_MODEL_aov<-eval(parse(text=function_call_FULL))
+            #   
+            # } else{
+            #   full_MODEL_aov<-full_MODEL
+            # }
             
-            #Find factors
-            find_fact<-sapply(1:length(other_eff_split_fac_test),function(x) is.factor(data_sub[,other_eff_split_fac_test[x]]))
-            
-            if(sum(find_fact)>0){
-              #Let the model run again, but with new contrasts (important for getting the right p value from type III anova)
-              add_contr<-paste0(",contrasts=list(",paste0(other_eff_split_fac_test[find_fact],"=contr.sum",collapse=","),")")
-              
-              if(grepl("\\|",other_effects_expr)){
-                function_call_FULL<-paste0("glmer(courtships~",subset_col,other_effects_expr,",family=binomial,data=data_sub",add_contr,")")
-              } else{
-                #If no other effects, perform GLM
-                function_call_FULL<-paste0("glm(courtships~",subset_col,other_effects_expr,",family=binomial,data=data_sub",add_contr,")")
-              }  
-              full_MODEL_aov<-eval(parse(text=function_call_FULL))
-              
-            } else{
-              full_MODEL_aov<-full_MODEL
-            }
             #get the the p value for the subset column (same for both)
-            anova.res<-joint_tests(full_MODEL_aov)
+            #This is not needed if simple LRT test is to be performed
+            anova.res<-joint_tests(full_MODEL)
             #In case we let both subset columns run in the same model
             #we extract the p value for sub1_col as well as for the interaction terms
             if(sub1_2_in_one_model1){
               p_val_glmer1<-anova.res$p.value[anova.res$`model term`==subset_col]
-              emmeans_interact<-summary(eval(parse(text=paste0("emmeans(full_MODEL_aov,pairwise ~ ",sub2_col_for_both," | ",subset_col,")"))))
+              emmeans_interact<-summary(eval(parse(text=paste0("emmeans(full_MODEL,pairwise ~ ",sub2_col_for_both," | ",subset_col,")"))))
               p_val_glmer2<-cbind(emmeans_interact$contrasts[subset_col],p.value=emmeans_interact$contrasts$p.value)
               p_val_glmer<-list(p_val_glmer1,p_val_glmer2)
             } else{
-              p_val_glmer<-anova.res$p.value[anova.res$`model term`==subset_col]
+              if(test_type=="LRT"){
+                null_MODEL<-eval_function(function_call_HERE=gsub(subset_col,"1",function_call_FULL),
+                                          subset_type=c("sub1_col","sub2_col")[for_error_sub==c("First","Second")],
+                                          sub_col_name=subset_col,
+                                          sub1_category=if_sub2_sub1_cat,
+                                          null_or_full="FULL")
+                
+                if(null_MODEL$error_text!="No error."){
+                  warning(null_MODEL$error_text)
+                }
+                
+                p_val_glmer<-anova(full_MODEL,null_MODEL$model_out,test="LRT")$`Pr(>Chisq)`[2]
+                
+              } else{
+                p_val_glmer<-anova.res$p.value[anova.res$`model term`==subset_col]
+              }
             }
           } else{
             if(sub1_2_in_one_model1){
@@ -3580,6 +3691,10 @@ plot_proportion_stats<-function(input_data,
             }
           }
           
+          #Reset old contrasts
+          options(contrasts = old_contr$contrasts)
+          
+          
           if(verbose){
             print("--------")
           }
@@ -3591,6 +3706,10 @@ plot_proportion_stats<-function(input_data,
                         problem_col=problem_col,posterior=bayes_sim,parameter_post=parameter_post))
           }
         } else{
+          
+          #Reset old contrasts
+          options(contrasts = old_contr$contrasts)
+          
           matNA<-data.frame(Type=subset_vec,estimator=c(NA),lower0.025=c(NA),upper0.975=c(NA))
           if(type_of_stats!="bayes_glm_glmer"){
             return(list(FULL_MODEL=NA,P_VALUE=NA,OVERDISP=NA,CI_EST=matNA,
@@ -3601,6 +3720,10 @@ plot_proportion_stats<-function(input_data,
           }
         }
       } else{
+        
+        #Reset old contrasts
+        options(contrasts = old_contr$contrasts)
+        
         matNA<-data.frame(Type=subset_vec,estimator=c(NA),lower0.025=c(NA),upper0.975=c(NA))
         if(type_of_stats!="bayes_glm_glmer"){
           return(list(FULL_MODEL=NA,P_VALUE=NA,OVERDISP=NA,CI_EST=matNA,
@@ -3610,6 +3733,10 @@ plot_proportion_stats<-function(input_data,
                       problem_col=problem_col,posterior=NA,parameter_post=NA))
         }
       }
+     
+      #Reset old contrasts
+      options(contrasts = old_contr$contrasts)
+      
     } else{
       
       
@@ -3695,6 +3822,7 @@ plot_proportion_stats<-function(input_data,
       }
       
     }
+    
   }
   
   
@@ -4583,7 +4711,7 @@ plot_proportion_stats<-function(input_data,
   
   #If GLMM/GLM dataset cannot be summed by the sum_by_col_plot,
   #save it here
-  if(!sum_also_for_GLMM){
+  if(!sum_also_for_GLMM|!simplify_for_model){
     tfinal_stats<-tfinal
   }
   
@@ -4636,12 +4764,13 @@ plot_proportion_stats<-function(input_data,
     if((length(sub1_col)>0&stats_for_1sub)|(length(sub2_col)>0&stats_for_2sub)){
       if(type_of_stats=="freq_binom"){
         print("sum_by_col_plot was also applied to table which will be passed to the statistical analyses since you set type_of_stats to 'freq_binom'.")
+        tfinal_stats<-tfinal
       } else{
-        if(type_of_stats!="bayes_own_brm"){
+        if(type_of_stats!="bayes_own_brm"&simplify_for_model){
           print("sum_by_col_plot was also applied to table which will be passed to the statistical analyses since none of the columns in your other_effects are missing from sum_by_col_plot. This will save time during modeling.")
+          tfinal_stats<-tfinal
         }
       }
-      tfinal_stats<-tfinal
     }
   }
   
@@ -4823,7 +4952,8 @@ plot_proportion_stats<-function(input_data,
                                                verbose=verbose,
                                                scale_center1=scale_center,
                                                perform_GLM_GLMM=perform_GLM_GLMM,
-                                               brm_model1=brm_model[[1]]))
+                                               brm_model1=brm_model[[1]],
+                                               test_type=test_type))
           warning_col_glmm<-testo$FIRST_SUB_TEST$problem_col
           testo$FIRST_SUB_TEST<-testo$FIRST_SUB_TEST[-(1:length(testo$FIRST_SUB_TEST))[names(testo$FIRST_SUB_TEST)=="problem_col"]]
         } else{
@@ -4855,7 +4985,8 @@ plot_proportion_stats<-function(input_data,
                                                  sub1_2_in_one_model1=T,
                                                  sub2_col_for_both=sub2_col,
                                                  perform_GLM_GLMM=perform_GLM_GLMM,
-                                                 brm_model1=brm_model[[1]]))
+                                                 brm_model1=brm_model[[1]],
+                                                 test_type=test_type))
           warning_col_glmm<-testo$INTERACTION_TEST$problem_col
           testo$INTERACTION_TEST<-testo$INTERACTION_TEST[-(1:length(testo$INTERACTION_TEST))[names(testo$INTERACTION_TEST)=="problem_col"]]
         } else{
@@ -4925,7 +5056,8 @@ plot_proportion_stats<-function(input_data,
                                                     verbose=verbose,
                                                     scale_center1=scale_center,
                                                     perform_GLM_GLMM=perform_GLM_GLMM,
-                                                    brm_model1=brm_model[[1+sub2_GLMM]])
+                                                    brm_model1=brm_model[[1+sub2_GLMM]],
+                                                    test_type=test_type)
                 warning_col_glmm<-unique(c(warning_col_glmm,testo[[length(testo)]]$problem_col))
                 testo[[length(testo)]]<-testo[[length(testo)]][-(1:length(testo[[length(testo)]]))[names(testo[[length(testo)]])=="problem_col"]]
                 names(testo)[length(testo)]<-paste0("SEC_SUB_TEST_GROUP_",sub1_states[sub2_GLMM])
