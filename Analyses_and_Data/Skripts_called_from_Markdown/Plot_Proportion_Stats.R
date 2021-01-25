@@ -576,8 +576,8 @@
 #Default is 0.04
 
 #sub2_est_perc_cent
-#Proportion of maximum distance from center to sub2_col estimators
-#A value of 0 will position the estimator in the center, a value of 1 on the very 
+#Proportion of maximum distance from center to sub2_col estimators / the center of the boxplots
+#A value of 0 will position the estimator/box in the center, a value of 1 on the very 
 #ends left and right of the panel.
 #Default is 0.8
 
@@ -5361,7 +5361,7 @@ plot_proportion_stats<-function(input_data,
                   suppressWarnings(wtd.boxplot(
                     x1[w1>0],
                     weights=list(bw1[w1>0],rep(1,sum(w1>0)))[c(length(unique(bw1[w1>0]))>1,length(unique(bw1[w1>0]))==1)],
-                    at = sub1_pos_in_plot[sub2_GLMM]+c(-0.40*sub1_panel_weights[sub2_GLMM],0.40*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
+                    at = sub1_pos_in_plot[sub2_GLMM]+c(-sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM],sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
                     add = T,
                     axes = F,
                     outline = F,
@@ -5380,7 +5380,7 @@ plot_proportion_stats<-function(input_data,
                   suppressWarnings(wtd.boxplot(
                     x1[w1>0],
                     weights=list(bw1[w1>0],rep(1,sum(w1>0)))[c(length(unique(bw1[w1>0]))>1,length(unique(bw1[w1>0]))==1)],
-                    at = sub1_pos_in_plot[sub2_GLMM]+c(-0.40*sub1_panel_weights[sub2_GLMM],0.40*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
+                    at = sub1_pos_in_plot[sub2_GLMM]+c(-sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM],sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
                     add = T,
                     axes = F,
                     outline = F,
@@ -5770,7 +5770,7 @@ plot_proportion_stats<-function(input_data,
                       suppressWarnings(wtd.boxplot(
                         x1[w1>0],
                         weights=list(bw1[w1>0],rep(1,sum(w1>0)))[c(length(unique(bw1[w1>0]))>1,length(unique(bw1[w1>0]))==1)],
-                        at = sub1_pos_in_plot[sub2_GLMM]+c(-0.40*sub1_panel_weights[sub2_GLMM],0.40*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
+                        at = sub1_pos_in_plot[sub2_GLMM]+c(-sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM],sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
                         add = T,
                         axes = F,
                         outline = F,
@@ -5789,7 +5789,7 @@ plot_proportion_stats<-function(input_data,
                       suppressWarnings(wtd.boxplot(
                         x1[w1>0],
                         weights=list(bw1[w1>0],rep(1,sum(w1>0)))[c(length(unique(bw1[w1>0]))>1,length(unique(bw1[w1>0]))==1)],
-                        at = sub1_pos_in_plot[sub2_GLMM]+c(-0.40*sub1_panel_weights[sub2_GLMM],0.40*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
+                        at = sub1_pos_in_plot[sub2_GLMM]+c(-sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM],sub2_est_perc_cent*0.5*sub1_panel_weights[sub2_GLMM])[AB==(1:2)],
                         add = T,
                         axes = F,
                         outline = F,
@@ -5911,7 +5911,7 @@ plot_proportion_stats<-function(input_data,
                 sign_coder(values=sign_testo_sub,
                            lino=liner,ticki=c(0.012,0.015,0.01)[liner==c(0.42,0.9,1000)],
                            where=sub1_pos_in_plot[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]+sub1_panel_weights[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]*c(-0.25,0.25),
-                           bars_where=list(sub1_pos_in_plot[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]+sub1_panel_weights[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]*c(-0.40,0.40),rep(-10000,2))[c(show_estimators[2],!show_estimators[2])][[1]],
+                           bars_where=list(sub1_pos_in_plot[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]+sub1_panel_weights[sub1_states==CI_CrI[c(2*by_group_int-1,2*by_group_int),1][1]]*c(-0.25,0.25),rep(-10000,2))[c(show_estimators[2],!show_estimators[2])][[1]],
                            conf=T,
                            width_mean_bar=width_mean_sub2,
                            width_error_sub1=width_error_sub2,
