@@ -1,4 +1,4 @@
-#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in mainly ~September 2019 - January 2020 (last update April 29 2020)
+#Written by Alexander E. Hausmann (hausmann@bio.lmu.de) in 2019 - 2020
 
 ##### Plot Courtship Proportion data with estimators and significance for
 ##### comparison of different groups (e.g. species) and/or subgroups.
@@ -4678,6 +4678,7 @@ plot_proportion_stats<-function(input_data,
     if(length(sub2_col)==1){
       positioning_sub2<-tfinal[,sub2_col]
     } else{
+      positioning_sub2<-rep(NA,nrow(tfinal))
       for(col_spec_enter in 1:length(sub2_col)){
         if(!is.na(sub2_col[col_spec_enter])){
           positioning_sub2[tfinal[,sub1_col]==sub1_states[col_spec_enter]]<-tfinal[tfinal[,sub1_col]==sub1_states[col_spec_enter],sub2_col[col_spec_enter]]
