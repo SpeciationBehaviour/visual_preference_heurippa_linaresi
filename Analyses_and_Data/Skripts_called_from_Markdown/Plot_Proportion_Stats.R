@@ -5485,7 +5485,7 @@ plot_proportion_stats<-function(input_data,
           #have to test if this is the case.
           
           #First for the case where all are subsetted
-          if(length(subtest)==sum(subtest>0)){
+          if(length(subtest)==sum(subtest>1)){
 
             if(length(tfinal$positioning)>0){
               #Check if errors due to dot_size.
@@ -5846,6 +5846,7 @@ plot_proportion_stats<-function(input_data,
               liner<-c(1000,0.9,1.8)[c(dim3_dec1,!is.sec_glmm&!dim3_dec1,is.sec_glmm&!dim3_dec1)]
               
               positioning_of_bars<-list(sub1_pos_in_plot[CI_order],rep(-10000,length(CI_order)))[c(show_estimators[1],!show_estimators[1])][[1]]
+              positioning_of_p<-positioning_of_bars
               #Remove sub1_col estimators if sub2_col subsetting is there (and wished by user)
               if(suppress_est1_if2&is.sec_glmm){
                 positioning_of_bars[subtest[CI_order]>1]<-(-10000)
@@ -5861,7 +5862,8 @@ plot_proportion_stats<-function(input_data,
                            thickness_est_CI1=thickness_est_CI)
               } else{
                 sign_coder(values=sign_testo,
-                           lino=liner,ticki=0.015,where=positioning_of_bars,
+                           lino=liner,ticki=0.015,
+                           where=positioning_of_p,
                            bars_where=positioning_of_bars,
                            conf=T,
                            width_mean_bar=width_mean_sub1,
