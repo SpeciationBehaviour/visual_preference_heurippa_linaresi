@@ -12,7 +12,7 @@ extra_dependencies: ["xcolor","formatR"]
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = 'C:/Users/Hausmann/Desktop/heurippa_manuscript_final/Analyses_and_Data/')
+knitr::opts_knit$set(root.dir = 'C:/Users/Hausmann/Desktop/visual_preference_heurippa_linaresi/Analyses_and_Data/')
 ```
 ```{r, include=FALSE}
 library(knitr)
@@ -128,6 +128,14 @@ if(!"MASS"%in% rownames(installed.packages())){
 suppressMessages(suppressWarnings(library(MASS)))
 ```
 
+`beeswarm`{.R} is used for regular beeswarm plots.
+```{r}
+if(!"beeswarm"%in% rownames(installed.packages())){
+    install.packages("beeswarm")
+}
+suppressMessages(suppressWarnings(library(beeswarm)))
+```
+
 # Choice experiment with *heu* and *lin* mounted females
 
 ## Data Read-in & Exploration
@@ -159,6 +167,8 @@ The columns indicate:
 * **position_TLC** = Recording position of *lin* 'female' in cage
 * **light_HC** = lux intensity at *heu* 'female'
 * **light_TLC** = lux intensity at *lin* 'female'
+* **grayscale_mean_at_visited** = a representative frame of each interaction between a male and a mounted female was transferred to grayscale using the `imager`{.R} package. The grayscale is determined via a linear approximation to luminance. A value of a pixel in grayscale ranges from 0 (black) to 1 (white). This column shows the mean pixel value.
+* **light_class_HC** = for each interaction of a *lin* or *heu* individual with either mounted female, we scored the light environment at the *heu* model from the video footage. We defined three classes of light environment: "sunny" (mounted female in sun), "cloudy" (mounted female in shade; most likely overcast conditions) or "sunny_but_treeshade" (mounted female in shade created by vegetation; sunny patches can be seen away from the mounted female). While the first two environments would speak for a flat irradiance curve (i.e. light arriving at the mounted female is uniformly distributed across wavelengths), the third would speak for more blueish light coming from the blue sky (less light from the red spectrum). Because we didn't store the raw video files, the light at the *heu* mounted female had to be reconstructed for datapoints where the *lin* female was visited. We seeked the closest frame from our remaining video footage of the *heu* mounted female. If the closest frame was >10 minutes away from the disired time point, an `NA`{.R} was entered.
 * **temp** = Temperature
 * **hum** = Humidity
 * **observer** = Observer ID
@@ -237,7 +247,7 @@ summary(lm(log10(pref_stat$light_HC)~log10(pref_stat$light_TLC)))$r.squared
 
 ### Adding new columns
 
-In short, lux is a measurement of the amount of photons hitting a surface per time. We assume that perception of illuminance in *Heliconius*, as in humans, is logarithmically scaled, i.e. a change from 100 and 1'000 lux (illuminance) would be perceived as much of a change as going from 1'000 to 10'000 lux (such 'logarithmic perception of illuminance' has been shown in in the fly, see Laughlin, Simon B. "Matching coding, circuits, cells, and molecules to signals: general principles of retinal design in the fly's eye." Progress in retinal and eye research 13.1 (1994): 165-196.). The exact formula for defining 'lighting steps' (i.e. whether e.g. 1000 lux would be perceived twice or thrice as bright as 100 lux) is hard to predict for *Heliconius* butterflies. We later center and scale all log-illuminance variables to make the choice of the base of the logarithm irrelevant. 
+In short, lux is a measurement of the amount of photons hitting a surface per time. We assume that perception of illuminance in *Heliconius*, as in humans, is logarithmically scaled, i.e. a change from 100 and 1'000 lux (illuminance) would be perceived as much of a change as going from 1'000 to 10'000 lux (such 'logarithmic perception of illuminance' has been shown in in the fly, see Laughlin, Simon B. "Matching coding, circuits, cells, and molecules to signals: general principles of retinal design in the fly's eye." Progress in retinal and eye research 13.1 (1994): 165-196.). The exact formula for defining 'lighting steps' (i.e. whether e.g. 1000 lux would be perceived twice or thrice as bright as 100 lux) is hard to predict for *Heliconius* butterflies. 
 
 To calculate the log-illuminance score at each 'female' we take the logarithm to the base 10 of each illumance measurement. 
 ```{r}
@@ -307,6 +317,77 @@ layout(1)
 
 We can see that the recording density is roughly the same for both 'females' and also the distribution of the responses is similar. At both mounted females, way more responses occurred at bright light conditions (more male activity or higher sensitivity of the motion-detection software).
 
+We also check if the illuminance measurements correlate with the brightness from the camera picture (as measured by the mean Luma-based grayscale score). We plot for the two mounted female types separately log-illuminance vs. the mean grayscale score of the video footage and lay a loess regression +-1.96 SE through it.
+```{r}
+#x limits
+xlims<-range(pref_stat[!is.na(pref_stat$grayscale_mean_at_visited),c("log_light_TLC","log_light_HC")],na.rm = T)
+#y limits - we cap at 0.66 to exclude one single outlier datapoint (which was however considered in the loess regression)
+ylims<-c(min(pref_stat$grayscale_mean_at_visited,na.rm = T),0.66)
+
+#Fit loess regression to heu data
+loess1<-loess(pref_stat$grayscale_mean_at_visited[pref_stat$court_lin_heu_01==1]~pref_stat$log_light_HC[pref_stat$court_lin_heu_01==1],span=0.9)
+#Get unique x-values to predict over
+uni_x1<-sort(unique(pref_stat$log_light_HC[pref_stat$court_lin_heu_01==1&!is.na(pref_stat$grayscale_mean_at_visited)]))
+#Make the prediction
+predi1<-predict(loess1,uni_x1,se = T)
+
+#Repeat for lin model
+loess2<-loess(pref_stat$grayscale_mean_at_visited[pref_stat$court_lin_heu_01==0]~pref_stat$log_light_HC[pref_stat$court_lin_heu_01==0],span=0.9)
+uni_x2<-sort(unique(pref_stat$log_light_HC[pref_stat$court_lin_heu_01==0&!is.na(pref_stat$grayscale_mean_at_visited)]))
+predi2<-predict(loess2,uni_x2,se = T)
+
+png("Graphs/for_supplementary_figure1.png",width=3000,height=1500,res=300)
+layout(matrix(1:2,ncol=2))
+par(mar=c(3,3.5,0.2,0.2))
+#Plot illuminance measures at the heu model vs. mean grayscale score of video frame
+plot(pref_stat$log_light_HC[pref_stat$court_lin_heu_01==1],
+     pref_stat$grayscale_mean_at_visited[pref_stat$court_lin_heu_01==1],
+     pch=20,col=adjustcolor("black",0.1),
+     xlim=xlims,ylim=ylims,xaxt="n",yaxt="n",xlab="",ylab="")
+#Add +-1.96 SE of loess line
+polygon(c(uni_x1,rev(uni_x1)),c(predi1$fit-1.96*predi1$se.fit,rev(predi1$fit+1.96*predi1$se.fit)),
+        border=NA,col=adjustcolor("dodgerblue",0.25))
+#Add loess regression
+lines(uni_x1,predi1$fit,col="dodgerblue",lwd=2)
+#Add axes and axes titles
+axis(1,at=log10(c(1.5,5,15,50,150)*1000),paste0(c(1.5,5,15,50,150),"k"),line=-0.7,lwd=0)
+axis(1,at=log10(c(1.5,5,15,50,150)*1000),labels=F,lwd=0,lwd.ticks=1,tck=-0.02)
+axis(2,las=2,lwd=0,line=-0.5)
+axis(2,labels=F,tck=-0.02)
+mtext(substitute(paste("Illuminance at mounted ",italic('H. heurippa')," female [",italic('lux'),"]")),
+      1,line=2)
+mtext("Mean (Luma-based) grayscale value of frame",
+      2,line=2)
+
+#Repeat for lin model
+par(mar=c(3,3.5,0.2,0.2))
+plot(pref_stat$log_light_HC[pref_stat$court_lin_heu_01==0],
+     pref_stat$grayscale_mean_at_visited[pref_stat$court_lin_heu_01==0],
+     pch=20,col=adjustcolor("black",0.1),
+     xlim=xlims,ylim=ylims,xaxt="n",yaxt="n",xlab="",ylab="")
+polygon(c(uni_x2,rev(uni_x2)),c(predi2$fit-1.96*predi2$se.fit,rev(predi2$fit+1.96*predi2$se.fit)),
+        border=NA,col=adjustcolor("dodgerblue",0.25))
+lines(uni_x2,predi2$fit,col="dodgerblue",lwd=2)
+axis(1,at=log10(c(1.5,5,15,50,150)*1000),paste0(c(1.5,5,15,50,150),"k"),line=-0.7,lwd=0)
+axis(1,at=log10(c(1.5,5,15,50,150)*1000),labels=F,lwd=0,lwd.ticks=1,tck=-0.02)
+axis(2,las=2,lwd=0,line=-0.5)
+axis(2,labels=F,tck=-0.02)
+mtext(substitute(paste("Illuminance at mounted ",italic('H. t. linaresi')," female [",italic('lux'),"]")),
+      1,line=2)
+mtext("Mean (Luma-based) grayscale value of frame",
+      2,line=2)
+
+invisible(dev.off())
+```
+
+Show png we just made
+```{r}
+fig2<-readPNG("Graphs/for_supplementary_figure1.png")
+grid.raster(fig2)
+```
+
+Pretty strong correlation. The slightly off part at low x-axis values is likely due to mistakes during measrements (e.g. logger fell to the floor or wasn't put up properly). The slight decrease in slope is likely due to the logger being sensitive for IR wavelengths, which are not recorded by the camera.
+
 Finally, we add a new column to the dataset where we concatenate date and trial (to get an ID for each unique trial)
 ```{r}
 pref_stat$date_trial<-paste0(pref_stat$date,"_",pref_stat$trial)
@@ -320,13 +401,6 @@ pref_stat_TLC_HC<-pref_stat[pref_stat$type%in%c("TLC","HC"),]
 pref_stat_BC<-pref_stat[pref_stat$type%in%c("TLCx(TLCxHC)","(TLCxHC)xTLC"),]
 ```
 
-We then center and scale `log_light_HC`{.R} and `log_light_TLC`{.R} in the two datasets. The scaling ensures that the chosen base of logarithm will not play a role for model outcome and centering is relevant for avoiding unproportional leverage of some data points.
-```{r}
-pref_stat_TLC_HC$log_light_HC.z<-scale(pref_stat_TLC_HC$log_light_HC,center=T,scale=T)
-pref_stat_TLC_HC$log_light_TLC.z<-scale(pref_stat_TLC_HC$log_light_TLC,center=T,scale=T)
-pref_stat_BC$log_light_HC.z<-scale(pref_stat_BC$log_light_HC,center=T,scale=T)
-pref_stat_BC$log_light_TLC.z<-scale(pref_stat_BC$log_light_TLC,center=T,scale=T)
-```
 
 ## Preference of *H. t. linaresi*, *H. heurippa* and backcross-to-*H. t. linaresi* hybrids and the effect of illuminance at the mounted *H. heurippa* female
 
@@ -344,8 +418,8 @@ for(change_fact in 1:length(make_fact)){
 The full (initial) model encompasses the following fixed effects:
 
 1) **type** (which (species) type a male belongs to) *OR* **redYN** (=genotype around _optix_, i.e. whether a backcross-to-*lin* hybrid has or has not red on its wings)
-2) **log_light_HC** (the scaled and centered log-illuminance at the *heu* 'female')
-3) **log_light_TLC** (the scaled and centered log-illuminance at the *lin* 'female')
+2) **log_light_HC** (the log-illuminance at the *heu* 'female')
+3) **log_light_TLC** (the log-illuminance at the *lin* 'female')
 4) The **interaction** between 1) and 2)
 5) The **interaction** between 1) and 3)
 6) The **interaction** between 2) and 3)
@@ -393,12 +467,19 @@ We use the full model (type and both log-illuminance measures as well as all int
 For starters, we include ID, trial nested in date and observer as random effects.
 
 Note that we are setting a seed within the `brm`{.R} function. 
+
+As for all following models, we always save them as RDS object, since these models run for incredibly long. In case they are already on our disk, we just load them.
 ```{r}
-mod1.0<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC.z*log_light_TLC.z+(1|ID)+(1|date/date_trial)+(1|observer),
+if(file.exists("Models/mod1.0.rds")){
+  mod1.0<-readRDS("Models/mod1.0.rds")
+} else{
+mod1.0<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC*log_light_TLC+(1|ID)+(1|date/date_trial)+(1|observer),
                prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
                        set_prior("normal(0,3)",class="Intercept")),
                family="bernoulli",data=pref_stat_TLC_HC,chains=5,
                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=1))
+saveRDS(mod1.0,"Models/mod1.0.rds")
+}
 ```
 
 We get a warning from Stan about divergent transaitions. Looking through the `Rhat`{.R}, `Bulk_ESS`{.R} and `Tail_ESS`{.R} estimates, we can see that `date`{.R} as random effect seems to cause most trouble. We see a relatively big `Rhat`{.R} (`Rhat=1`{.R} would indicate convergence) and small ESS values. (If we'd run the same model as a GLMM with the `lme4`{.R} package, we could see that the variance explained by `date`{.R} alone is very close to 0.)
@@ -408,7 +489,12 @@ suppressWarnings(summary(mod1.0)$random$date)
 
 We exclude `date`{.R} and only keep `date_trial`{.R} as random (no more nested).
 ```{r}
+if(file.exists("Models/mod1.1.rds")){
+  mod1.1<-readRDS("Models/mod1.1.rds")
+} else{
 mod1.1 <- suppressMessages(update(mod1.0, formula. =  ~ . + (1|date_trial) - (1|date/date_trial),refresh=0,silent = TRUE,seed=2))
+saveRDS(mod1.1,"Models/mod1.1.rds")
+}
 ```
 
 We still get lots of warnings about divergent transitions.
@@ -419,12 +505,22 @@ suppressWarnings(summary(mod1.1)$random$observer)
 
 We discard it as well.
 ```{r}
+if(file.exists("Models/mod1.2.rds")){
+  mod1.2<-readRDS("Models/mod1.2.rds")
+} else{
 mod1.2 <- suppressMessages(update(mod1.1, formula. =  ~ . - (1|observer),refresh=0,silent = TRUE,seed=3))
+saveRDS(mod1.2,"Models/mod1.2.rds")
+}
 ```
 
 No more warnings. The model seems to converge fine. We build another model reduced by `date_trial`{.R} as random effect to see how important it is.
 ```{r}
+if(file.exists("Models/mod1.3.rds")){
+  mod1.3<-readRDS("Models/mod1.3.rds")
+} else{
 mod1.3 <- suppressMessages(update(mod1.2, formula. =  ~ . - (1|date_trial),refresh=0,silent = TRUE,seed=4))
+saveRDS(mod1.3,"Models/mod1.3.rds")
+}
 ```
 
 Perform approximate leave-one-out (LOO) cross-validation with `mod1.2`{.R} and `mod1.3.`{.R}
@@ -442,69 +538,326 @@ Now we check which fixed effects we want to use. We try out all possible (nested
 
 Because we have some `NA`{.R} observations in the log-illuminance columns, we have to create a reduced dataset, where columns with `NA`{.R} get removed. This will allow that all models will be fitted to the same dataset (otherwise, due to different involved columns, some `NA`{.R} columns will be dropped for one model, but not for the other).
 ```{r}
-pref_stat_TLC_HC_red<-pref_stat_TLC_HC[!is.na(pref_stat_TLC_HC$log_light_HC.z)&!is.na(pref_stat_TLC_HC$log_light_TLC.z),]
+pref_stat_TLC_HC_red<-pref_stat_TLC_HC[!is.na(pref_stat_TLC_HC$log_light_HC)&!is.na(pref_stat_TLC_HC$log_light_TLC),]
 #For safety, we drop levels (may cause some problems if we don't)
 pref_stat_TLC_HC_red<-droplevels(pref_stat_TLC_HC_red)
 ```
 
 Create reduced version of `mod1.2`{.R} (which should actually be exactly the same as `mod1.2`{.R}, since `NA`{.R}s are anyway discarded during modelling). We need to do this step so we can fit the model to the new `pref_stat_TLC_HC_red`{.R} dataset. We will below update this model (avoids compiling time), so we have to make sure it's fitted to the new dataset.
 ```{r}
-mod1.2_red<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC.z*log_light_TLC.z+(1|ID)+(1|date_trial),
+if(file.exists("Models/mod1.2_red.rds")){
+  mod1.2_red<-readRDS("Models/mod1.2_red.rds")
+} else{
+mod1.2_red<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC*log_light_TLC+(1|ID)+(1|date_trial),
                prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
                        set_prior("normal(0,3)",class="Intercept")),
                family="bernoulli",data=pref_stat_TLC_HC_red,chains=5,
                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=5))
+saveRDS(mod1.2_red,"Models/mod1.2_red.rds")
+}
 ```
 
-Now we run all the reduced versions of the full model.
+Now we run all the reduced versions of the full model. Since none of these nested variations will be needed further on, we can immediately delete them after LOOIC and WAIC was calculated. Since our RMarkdown was often crashing during LOOIC/WAIC calculation, since these models are so gigantic, we check first if the LOOIC/WAIC value already exists in our LOOIC/WAIC table, which will be in the end exported. (This was solely for us, so that when rerunning the Markdown after it crashed, Markdown could start calculations from where it crashed). We are aware that this means that the LOOIC and WAIC calculations are not perfectly reproducible on another computer and are sorry for that (however, LOOIC and WAIC commands usually result in the exact same values with different seed; they usually just differ at the tenth digit after the comma or so). For anyone wanting to reproduce our precise values: In the last run (which you see here in this Markdown), we had all models saved previously and the LOOIC and WAIC calculations ran through from first to last (suprisingly without crashing).
+```{r}
+#If exists, read in
+if(file.exists("Tables/WAIC_pure.csv")){
+  IC_table<-read.csv("Tables/WAIC_pure.csv",header=T,stringsAsFactors = F)[,1:3]
+} else{
+  #Make empty table
+  IC_table<-data.frame(Model=character(0),
+                     LOOIC=numeric(0),WAIC=numeric(0),stringsAsFactors = F)
+}
+```
+
+Now produce the models (or load them), if they don't appear yet in the table. After being loaded and the WAIC/LOOIC being calculated, the models are deleted. The table is saved after each model has been finished.
 ```{r}
 #The null model (all fixed effects and interactions removed)
-mod1.200 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_HC.z - log_light_TLC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=6))
+if(!"mod1.200"%in%IC_table$Model){
+if(file.exists("Models/mod1.200.rds")){
+  mod1.200<-readRDS("Models/mod1.200.rds")
+} else{
+mod1.200 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_HC - log_light_TLC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=6))
+saveRDS(mod1.200,"Models/mod1.200.rds")
+}
+  loo_new<-loo(mod1.200)$estimates[3,1]
+  waic_new<-waic(mod1.200)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.200",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.200)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model only including type as fixed
-mod1.201 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC.z - log_light_TLC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=7))
+if(!"mod1.201"%in%IC_table$Model){
+if(file.exists("Models/mod1.201.rds")){
+  mod1.201<-readRDS("Models/mod1.201.rds")
+} else{
+mod1.201 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC - log_light_TLC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=7))
+saveRDS(mod1.201,"Models/mod1.201.rds")
+}
+  loo_new<-loo(mod1.201)$estimates[3,1]
+  waic_new<-waic(mod1.201)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.201",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.201)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model only including log-illuminance at heu 'female'
-mod1.202 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_TLC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=8))
+if(!"mod1.202"%in%IC_table$Model){
+if(file.exists("Models/mod1.202.rds")){
+  mod1.202<-readRDS("Models/mod1.202.rds")
+} else{
+mod1.202 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_TLC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=8))
+saveRDS(mod1.202,"Models/mod1.202.rds")
+}
+  loo_new<-loo(mod1.202)$estimates[3,1]
+  waic_new<-waic(mod1.202)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.202",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.202)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model only including log-illuminance at lin 'female'
-mod1.203 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_HC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=9))
+if(!"mod1.203"%in%IC_table$Model){
+if(file.exists("Models/mod1.203.rds")){
+  mod1.203<-readRDS("Models/mod1.203.rds")
+} else{
+mod1.203 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - log_light_HC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=9))
+saveRDS(mod1.203,"Models/mod1.203.rds")
+}
+  loo_new<-loo(mod1.203)$estimates[3,1]
+  waic_new<-waic(mod1.203)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.203",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.203)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type and log-illuminance at heu 'female'
-mod1.204 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_TLC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=10))
+if(!"mod1.204"%in%IC_table$Model){
+if(file.exists("Models/mod1.204.rds")){
+  mod1.204<-readRDS("Models/mod1.204.rds")
+} else{
+mod1.204 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_TLC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=10))
+saveRDS(mod1.204,"Models/mod1.204.rds")
+}
+  loo_new<-loo(mod1.204)$estimates[3,1]
+  waic_new<-waic(mod1.204)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.204",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.204)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type and log-illuminance at lin 'female'
-mod1.205 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC.z - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=11))
+if(!"mod1.205"%in%IC_table$Model){
+if(file.exists("Models/mod1.205.rds")){
+  mod1.205<-readRDS("Models/mod1.205.rds")
+} else{
+mod1.205 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=11))
+saveRDS(mod1.205,"Models/mod1.205.rds")
+}
+  loo_new<-loo(mod1.205)$estimates[3,1]
+  waic_new<-waic(mod1.205)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.205",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.205)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including log-illuminance at heu 'female' and log-illuminance at lin 'female'
-mod1.206 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=12))
+if(!"mod1.206"%in%IC_table$Model){
+if(file.exists("Models/mod1.206.rds")){
+  mod1.206<-readRDS("Models/mod1.206.rds")
+} else{
+mod1.206 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=12))
+saveRDS(mod1.206,"Models/mod1.206.rds")
+}
+  loo_new<-loo(mod1.206)$estimates[3,1]
+  waic_new<-waic(mod1.206)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.206",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.206)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female' and log-illuminance at lin 'female'
-mod1.207 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=13))
+if(!"mod1.207"%in%IC_table$Model){
+if(file.exists("Models/mod1.207.rds")){
+  mod1.207<-readRDS("Models/mod1.207.rds")
+} else{
+mod1.207 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=13))
+saveRDS(mod1.207,"Models/mod1.207.rds")
+}
+  loo_new<-loo(mod1.207)$estimates[3,1]
+  waic_new<-waic(mod1.207)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.207",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.207)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female' and their interaction
-mod1.208 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_TLC.z - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=14))
+if(!"mod1.208"%in%IC_table$Model){
+if(file.exists("Models/mod1.208.rds")){
+  mod1.208<-readRDS("Models/mod1.208.rds")
+} else{
+mod1.208 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_TLC - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod1.208,"Models/mod1.208.rds")
+}
+  loo_new<-loo(mod1.208)$estimates[3,1]
+  waic_new<-waic(mod1.208)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.208",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.208)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at lin 'female' and their interaction
-mod1.209 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC.z - type:log_light_HC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=15))
+if(!"mod1.209"%in%IC_table$Model){
+if(file.exists("Models/mod1.209.rds")){
+  mod1.209<-readRDS("Models/mod1.209.rds")
+} else{
+mod1.209 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC - type:log_light_HC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=15))
+saveRDS(mod1.209,"Models/mod1.209.rds")
+}
+  loo_new<-loo(mod1.209)$estimates[3,1]
+  waic_new<-waic(mod1.209)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.209",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.209)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including log-illuminance at heu 'female', log-illuminance at lin 'female' and their interaction
-mod1.210 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - type:log_light_HC.z - type:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=16))
+if(!"mod1.210"%in%IC_table$Model){
+if(file.exists("Models/mod1.210.rds")){
+  mod1.210<-readRDS("Models/mod1.210.rds")
+} else{
+mod1.210 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type - type:log_light_HC - type:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=16))
+saveRDS(mod1.210,"Models/mod1.210.rds")
+}
+  loo_new<-loo(mod1.210)$estimates[3,1]
+  waic_new<-waic(mod1.210)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.210",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.210)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between type and log-illuminance at heu 'female'
-mod1.211 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=17))
+if(!"mod1.211"%in%IC_table$Model){
+if(file.exists("Models/mod1.211.rds")){
+  mod1.211<-readRDS("Models/mod1.211.rds")
+} else{
+mod1.211 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_TLC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=17))
+saveRDS(mod1.211,"Models/mod1.211.rds")
+}
+  loo_new<-loo(mod1.211)$estimates[3,1]
+  waic_new<-waic(mod1.211)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.211",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.211)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between type and log-illuminance at lin 'female'
-mod1.212 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC.z - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=18))
+if(!"mod1.212"%in%IC_table$Model){
+if(file.exists("Models/mod1.212.rds")){
+  mod1.212<-readRDS("Models/mod1.212.rds")
+} else{
+mod1.212 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=18))
+saveRDS(mod1.212,"Models/mod1.212.rds")
+}
+  loo_new<-loo(mod1.212)$estimates[3,1]
+  waic_new<-waic(mod1.212)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.212",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.212)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between the two log-illuminance measures
-mod1.213 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC.z - type:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=19))
+if(!"mod1.213"%in%IC_table$Model){
+if(file.exists("Models/mod1.213.rds")){
+  mod1.213<-readRDS("Models/mod1.213.rds")
+} else{
+mod1.213 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC - type:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=19))
+saveRDS(mod1.213,"Models/mod1.213.rds")
+}
+  loo_new<-loo(mod1.213)$estimates[3,1]
+  waic_new<-waic(mod1.213)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.213",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.213)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between type and log-illuminance at heu 'female' and the interaction between the two log-illuminance measures
-mod1.214 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=20))
+if(!"mod1.214"%in%IC_table$Model){
+if(file.exists("Models/mod1.214.rds")){
+  mod1.214<-readRDS("Models/mod1.214.rds")
+} else{
+mod1.214 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=20))
+saveRDS(mod1.214,"Models/mod1.214.rds")
+}
+  loo_new<-loo(mod1.214)$estimates[3,1]
+  waic_new<-waic(mod1.214)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.214",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.214)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between type and log-illuminance at lin 'female' and the interaction between the two log-illuminance measures
-mod1.215 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=21))
+if(!"mod1.215"%in%IC_table$Model){
+if(file.exists("Models/mod1.215.rds")){
+  mod1.215<-readRDS("Models/mod1.215.rds")
+} else{
+mod1.215 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=21))
+saveRDS(mod1.215,"Models/mod1.215.rds")
+}
+  loo_new<-loo(mod1.215)$estimates[3,1]
+  waic_new<-waic(mod1.215)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.215",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.215)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between type and log-illuminance at heu 'female' and the interaction between type and log-illuminance at lin 'female'
-mod1.216 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC.z:log_light_TLC.z - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=22))
+if(!"mod1.216"%in%IC_table$Model){
+if(file.exists("Models/mod1.216.rds")){
+  mod1.216<-readRDS("Models/mod1.216.rds")
+} else{
+mod1.216 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - log_light_HC:log_light_TLC - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=22))
+saveRDS(mod1.216,"Models/mod1.216.rds")
+}
+  loo_new<-loo(mod1.216)$estimates[3,1]
+  waic_new<-waic(mod1.216)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.216",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.216)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 #The model including type, log-illuminance at heu 'female', log-illuminance at lin 'female' and all two-way interactions
-mod1.217 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=23))
+if(!"mod1.217"%in%IC_table$Model){
+if(file.exists("Models/mod1.217.rds")){
+  mod1.217<-readRDS("Models/mod1.217.rds")
+} else{
+mod1.217 <- suppressMessages(update(mod1.2_red, formula. =  ~ . - type:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=23))
+saveRDS(mod1.217,"Models/mod1.217.rds")
+}
+  loo_new<-loo(mod1.217)$estimates[3,1]
+  waic_new<-waic(mod1.217)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.217",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.217)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 ```
 
-Calculate LOOIC and WAIC for `mod1.2_red`{.R} and all nested, reduced models.
+now, we calculate WAIC and LOOIC of the full model.
 ```{r}
-all_looic<-c(loo(mod1.2_red)$estimates[3,1],sapply(0:17,function(x) loo(get(paste0("mod1.2",ifelse(x<10,paste0("0",x),x))))$estimates[3,1]))
-all_waic<-c(waic(mod1.2_red)$estimates[3,1],sapply(0:17,function(x) waic(get(paste0("mod1.2",ifelse(x<10,paste0("0",x),x))))$estimates[3,1]))
+if(!"mod1.2_red"%in%IC_table$Model){
+  loo_new<-loo(mod1.2_red)$estimates[3,1]
+  waic_new<-waic(mod1.2_red)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod1.2_red",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod1.2_red)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
+}
 ```
 
 To create model weights based on WAIC, we use the exact same code as the `model_weights`{.R} function of `brms`{.R} would do. We calculate it here manually, since the `model_weights`{.R} function would otherwise calculate all WAIC values again (which would cost time and we'd also have to be careful with settings seeds, since WAIC calculation relies on the random number generator). 
 ```{r}
-ic_diffs <- all_waic - min(all_waic)
+ic_diffs <- IC_table$WAIC - min(IC_table$WAIC)
 out <- exp(-ic_diffs / 2)
 out <- as.numeric(out)
 out <- out / sum(out)
@@ -512,9 +865,7 @@ out <- out / sum(out)
 
 We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate WAIC differences between best fitting model and the other models. We then sort this table by WAIC value and view it.
 ```{r rows.print=19}
-IC_table<-data.frame(Model=c("mod1.2_red",paste0("mod1.2",ifelse((0:17)<10,paste0("0",0:17),0:17))),
-                     LOOIC=all_looic,WAIC=all_waic,
-                     WAIC_Diff=ic_diffs,WAIC_weight=out)
+IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
 cbind(Model=IC_table[,1],round(IC_table[,-1],2))
 ```
@@ -531,46 +882,433 @@ We safe this table:
 write.csv(IC_table,"Tables/WAIC_pure.csv",row.names=F,quote=F)
 ```
 
-We therefore settle for `mod1.208`{.R}. We fit the model again, but now to the full dataset (this should result in almost the same model, since almost all `NA`{.R} rows were shared between `log_light_HC.z`{.R} and `log_light_TLC.z`{.R}). We fit it explicitely here (without the `update()`{.R} function), so it's better visible how the model looks like. We use the same seed as before (which though shouldn't play any role, since we use a new dataset).
+We also generate "categorical" illuminance models, where we split log-illuminance at the *heu* model and at the *lin* into dark and bright, following the median measurements of the dataset. We have to add two new columns for that, putting rows into each of the two times two classes. 
 ```{r}
-mod1.208<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC.z+(1|ID)+(1|date_trial),
+pref_stat_TLC_HC$quantile_low_up_1<-as.integer(cut(pref_stat_TLC_HC$log_light_HC, quantile(pref_stat_TLC_HC$log_light_HC, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
+pref_stat_TLC_HC$quantile_low_up_1<-paste0("q",pref_stat_TLC_HC$quantile_low_up_1)
+pref_stat_TLC_HC$quantile_low_up_1[pref_stat_TLC_HC$quantile_low_up_1=="qNA"]<-NA
+pref_stat_TLC_HC$quantile_low_up_2<-as.integer(cut(pref_stat_TLC_HC$log_light_TLC, quantile(pref_stat_TLC_HC$log_light_TLC, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
+pref_stat_TLC_HC$quantile_low_up_2<-paste0("q",pref_stat_TLC_HC$quantile_low_up_2)
+pref_stat_TLC_HC$quantile_low_up_2[pref_stat_TLC_HC$quantile_low_up_2=="qNA"]<-NA
+```
+
+We again run all the 19 possible nested categorical models, just as we did before for the continuous data.
+
+The full model based on the reduced dataset (i.e. without `NA`{.R}):
+```{r}
+if(file.exists("Models/mod_CAT_1.2_red.rds")){
+  mod_CAT_1.2_red<-readRDS("Models/mod_CAT_1.2_red.rds")
+} else{
+  mod_CAT_1.2_red<-suppressMessages(brm(court_lin_heu_01~type*quantile_low_up_1*quantile_low_up_2+(1|ID)+(1|date_trial),
+                                        prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
+                                                set_prior("normal(0,3)",class="Intercept")),
+                                        family="bernoulli",data=pref_stat_TLC_HC_red,chains=5,
+                                        iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=5))
+  saveRDS(mod_CAT_1.2_red,"Models/mod_CAT_1.2_red.rds")
+}
+```
+
+Load/create the results table
+```{r}
+#If exists, read in
+if(file.exists("Tables/WAIC_pure_CAT.csv")){
+  IC_table<-read.csv("Tables/WAIC_pure_CAT.csv",header=T,stringsAsFactors = F)[,1:3]
+} else{
+  #Make empty table
+  IC_table<-data.frame(Model=character(0),
+                       LOOIC=numeric(0),WAIC=numeric(0),stringsAsFactors = F)
+}
+```
+
+And all other variations...
+```{r}
+#The null model (all fixed effects and interactions removed)
+if(!"mod_CAT_1.200"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.200.rds")){
+  mod_CAT_1.200<-readRDS("Models/mod_CAT_1.200.rds")
+} else{
+mod_CAT_1.200 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type - quantile_low_up_1 - quantile_low_up_2 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=6))
+saveRDS(mod_CAT_1.200,"Models/mod_CAT_1.200.rds")
+}
+  loo_new<-loo(mod_CAT_1.200)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.200)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.200",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.200)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model only including type as fixed
+if(!"mod_CAT_1.201"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.201.rds")){
+  mod_CAT_1.201<-readRDS("Models/mod_CAT_1.201.rds")
+} else{
+mod_CAT_1.201 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_1 - quantile_low_up_2 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=7))
+saveRDS(mod_CAT_1.201,"Models/mod_CAT_1.201.rds")
+}
+  loo_new<-loo(mod_CAT_1.201)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.201)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.201",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.201)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model only including categorical illuminance at heu 'female'
+if(!"mod_CAT_1.202"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.202.rds")){
+  mod_CAT_1.202<-readRDS("Models/mod_CAT_1.202.rds")
+} else{
+mod_CAT_1.202 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type - quantile_low_up_2 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=8))
+saveRDS(mod_CAT_1.202,"Models/mod_CAT_1.202.rds")
+}
+  loo_new<-loo(mod_CAT_1.202)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.202)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.202",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.202)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model only including categorical illuminance at lin 'female'
+if(!"mod_CAT_1.203"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.203.rds")){
+  mod_CAT_1.203<-readRDS("Models/mod_CAT_1.203.rds")
+} else{
+mod_CAT_1.203 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type - quantile_low_up_1 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=9))
+saveRDS(mod_CAT_1.203,"Models/mod_CAT_1.203.rds")
+}
+  loo_new<-loo(mod_CAT_1.203)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.203)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.203",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.203)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type and categorical illuminance at heu 'female'
+if(!"mod_CAT_1.204"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.204.rds")){
+  mod_CAT_1.204<-readRDS("Models/mod_CAT_1.204.rds")
+} else{
+mod_CAT_1.204 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_2 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=10))
+saveRDS(mod_CAT_1.204,"Models/mod_CAT_1.204.rds")
+}
+  loo_new<-loo(mod_CAT_1.204)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.204)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.204",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.204)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type and categorical illuminance at lin 'female'
+if(!"mod_CAT_1.205"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.205.rds")){
+  mod_CAT_1.205<-readRDS("Models/mod_CAT_1.205.rds")
+} else{
+mod_CAT_1.205 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_1 - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=11))
+saveRDS(mod_CAT_1.205,"Models/mod_CAT_1.205.rds")
+}
+  loo_new<-loo(mod_CAT_1.205)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.205)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.205",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.205)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including categorical illuminance at heu 'female' and categorical illuminance at lin 'female'
+if(!"mod_CAT_1.206"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.206.rds")){
+  mod_CAT_1.206<-readRDS("Models/mod_CAT_1.206.rds")
+} else{
+mod_CAT_1.206 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=12))
+saveRDS(mod_CAT_1.206,"Models/mod_CAT_1.206.rds")
+}
+  loo_new<-loo(mod_CAT_1.206)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.206)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.206",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.206)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female' and categorical illuminance at lin 'female'
+if(!"mod_CAT_1.207"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.207.rds")){
+  mod_CAT_1.207<-readRDS("Models/mod_CAT_1.207.rds")
+} else{
+mod_CAT_1.207 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_1 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=13))
+saveRDS(mod_CAT_1.207,"Models/mod_CAT_1.207.rds")
+}
+  loo_new<-loo(mod_CAT_1.207)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.207)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.207",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.207)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female' and their interaction
+if(!"mod_CAT_1.208"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.208.rds")){
+  mod_CAT_1.208<-readRDS("Models/mod_CAT_1.208.rds")
+} else{
+mod_CAT_1.208 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_2 - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod_CAT_1.208,"Models/mod_CAT_1.208.rds")
+}
+  loo_new<-loo(mod_CAT_1.208)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.208)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.208",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.208)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at lin 'female' and their interaction
+if(!"mod_CAT_1.209"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.209.rds")){
+  mod_CAT_1.209<-readRDS("Models/mod_CAT_1.209.rds")
+} else{
+mod_CAT_1.209 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_1 - type:quantile_low_up_1 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=15))
+saveRDS(mod_CAT_1.209,"Models/mod_CAT_1.209.rds")
+}
+  loo_new<-loo(mod_CAT_1.209)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.209)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.209",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.209)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including categorical illuminance at heu 'female', categorical illuminance at lin 'female' and their interaction
+if(!"mod_CAT_1.210"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.210.rds")){
+  mod_CAT_1.210<-readRDS("Models/mod_CAT_1.210.rds")
+} else{
+mod_CAT_1.210 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type - type:quantile_low_up_1 - type:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=16))
+saveRDS(mod_CAT_1.210,"Models/mod_CAT_1.210.rds")
+}
+  loo_new<-loo(mod_CAT_1.210)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.210)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.210",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.210)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between type and categorical illuminance at heu 'female'
+if(!"mod_CAT_1.211"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.211.rds")){
+  mod_CAT_1.211<-readRDS("Models/mod_CAT_1.211.rds")
+} else{
+mod_CAT_1.211 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=17))
+saveRDS(mod_CAT_1.211,"Models/mod_CAT_1.211.rds")
+}
+  loo_new<-loo(mod_CAT_1.211)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.211)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.211",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.211)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between type and categorical illuminance at lin 'female'
+if(!"mod_CAT_1.212"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.212.rds")){
+  mod_CAT_1.212<-readRDS("Models/mod_CAT_1.212.rds")
+} else{
+mod_CAT_1.212 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_1 - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=18))
+saveRDS(mod_CAT_1.212,"Models/mod_CAT_1.212.rds")
+}
+  loo_new<-loo(mod_CAT_1.212)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.212)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.212",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.212)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_1.213"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.213.rds")){
+  mod_CAT_1.213<-readRDS("Models/mod_CAT_1.213.rds")
+} else{
+mod_CAT_1.213 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_1 - type:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=19))
+saveRDS(mod_CAT_1.213,"Models/mod_CAT_1.213.rds")
+}
+  loo_new<-loo(mod_CAT_1.213)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.213)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.213",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.213)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between type and categorical illuminance at heu 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_1.214"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.214.rds")){
+  mod_CAT_1.214<-readRDS("Models/mod_CAT_1.214.rds")
+} else{
+mod_CAT_1.214 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=20))
+saveRDS(mod_CAT_1.214,"Models/mod_CAT_1.214.rds")
+}
+  loo_new<-loo(mod_CAT_1.214)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.214)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.214",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.214)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between type and categorical illuminance at lin 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_1.215"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.215.rds")){
+  mod_CAT_1.215<-readRDS("Models/mod_CAT_1.215.rds")
+} else{
+mod_CAT_1.215 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_1 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=21))
+saveRDS(mod_CAT_1.215,"Models/mod_CAT_1.215.rds")
+}
+  loo_new<-loo(mod_CAT_1.215)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.215)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.215",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.215)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between type and categorical illuminance at heu 'female' and the interaction between type and categorical illuminance at lin 'female'
+if(!"mod_CAT_1.216"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.216.rds")){
+  mod_CAT_1.216<-readRDS("Models/mod_CAT_1.216.rds")
+} else{
+mod_CAT_1.216 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - quantile_low_up_1:quantile_low_up_2 - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=22))
+saveRDS(mod_CAT_1.216,"Models/mod_CAT_1.216.rds")
+}
+  loo_new<-loo(mod_CAT_1.216)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.216)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.216",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.216)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+#The model including type, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and all two-way interactions
+if(!"mod_CAT_1.217"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_1.217.rds")){
+  mod_CAT_1.217<-readRDS("Models/mod_CAT_1.217.rds")
+} else{
+mod_CAT_1.217 <- suppressMessages(update(mod_CAT_1.2_red, formula. =  ~ . - type:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=23))
+saveRDS(mod_CAT_1.217,"Models/mod_CAT_1.217.rds")
+}
+  loo_new<-loo(mod_CAT_1.217)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.217)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.217",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_1.217)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+```
+
+now, we calculate WAIC and LOOIC of the full model.
+```{r}
+if(!"mod_CAT_1.2_red"%in%IC_table$Model){
+  loo_new<-loo(mod_CAT_1.2_red)$estimates[3,1]
+  waic_new<-waic(mod_CAT_1.2_red)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_1.2_red",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+  rm(mod_CAT_1.2_red)
+  invisible(gc())
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+}
+```
+
+WAIC weights.
+```{r}
+ic_diffs <- IC_table$WAIC - min(IC_table$WAIC)
+out <- exp(-ic_diffs / 2)
+out <- as.numeric(out)
+out <- out / sum(out)
+```
+
+We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate WAIC differences between best fitting model and the other models. We then sort this table by WAIC value and view it.
+```{r rows.print=19}
+IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
+IC_table<-IC_table[order(IC_table$WAIC),]
+cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+```
+
+We can see that the categorical data support the same model structure as the continuous data, i.e. the model including male type, log-illuminance at the *heu* model and their interaction. Again, the best fitting models all include the interaction between male type, log-illuminance at the *heu* model; just this time, one of the six models that include this interaction is not in the "Top 6"; the full model with three-way interaction.
+
+We save the table.
+```{r}
+write.csv(IC_table,"Tables/WAIC_pure_CAT.csv",row.names=F,quote=F)
+```
+
+The model for the continuous as well as for the categorical data agree! We therefore settle for model structure `mod1.208`{.R}. We fit the continuous model again, but now to the full dataset (this should result in almost the same model, since almost all `NA`{.R} rows were shared between `log_light_HC`{.R} and `log_light_TLC`{.R}). We fit it explicitely here (without the `update()`{.R} function), so it's better visible how the model looks like. We use the same seed as before (which though shouldn't play any role, since we use a new dataset).
+```{r}
+if(file.exists("Models/mod1.208_final.rds")){
+  mod1.208_final<-readRDS("Models/mod1.208_final.rds")
+} else{
+mod1.208_final<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC+(1|ID)+(1|date_trial),
                prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
                        set_prior("normal(0,3)",class="Intercept")),
                family="bernoulli",data=pref_stat_TLC_HC,chains=5,
                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod1.208_final,"Models/mod1.208_final.rds")
+}
 ```
 
-For visualization purposes later, we use the same model structure to generate a new "categorical" illuminance model, where we split log-illuminance at the *heu* model into dark and bright, following the median of the dataset. We have to add a new column for that, putting rows into each of the two classes.
+To correct for the broad light environment in which lux was recorded, we scored whether the *heu* mounted female was in treeshade, i.e. other regions of the experimental cage were sunny, but the mounted female was in the shade. In such light environment, the spectrum of light falling into the cage would be blue-biased. All other light environments in our experiment are expected to have a flat spectrum, i.e. lux is a decent approximation for the intensity of long-wavelength/red light getting into the cage (red light is what matters for the contrast of the red band). Therefore we have to multiply measurements from the treeshade environment by a factor X, which downregulates the overestimation of long-wavelength light done by the logger. We estimated X to be 0.85, based on the spectral sensitivity of our light logger and Fig. 8 from Endler 1993 Ecol. Monogr.; `log_light_HC_corrected`{.R} is the name of the corrected column, where we take the log10 of the corrected lux values.
 ```{r}
-pref_stat_TLC_HC$quantile_low_up<-as.integer(cut(pref_stat_TLC_HC$log_light_HC.z, quantile(pref_stat_TLC_HC$log_light_HC.z, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
-pref_stat_TLC_HC$quantile_low_up<-paste0("q",pref_stat_TLC_HC$quantile_low_up)
+pref_stat_TLC_HC$light_HC_corrected<-pref_stat_TLC_HC$light_HC
+check_for_blue<-pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"
+check_for_blue<-ifelse(is.na(check_for_blue),FALSE,check_for_blue)
+pref_stat_TLC_HC$light_HC_corrected[check_for_blue]<-pref_stat_TLC_HC$light_HC_corrected[check_for_blue]*0.85
+pref_stat_TLC_HC$log_light_HC_corrected<-log10(pref_stat_TLC_HC$light_HC_corrected)
 ```
 
-We run the categorical model (we again use the same seed as before, but it again doesn't matter at all really).
+Before we run this model, we run another model checking if our observations by eye match with the light logger scores. We build a model where we explain male preference by male type, the light environment class and their interaction. To recall, we scored three light environment classes, "sunny", "cloudy" and "woodland shade". This model will be visualized later in this Markdown.
+```{r}
+if(file.exists("Models/mod1.208_light_cat.rds")){
+  mod1.208_light_cat<-readRDS("Models/mod1.208_light_cat.rds")
+} else{
+mod1.208_light_cat<-suppressMessages(brm(court_lin_heu_01~type*light_class_HC+(1|ID)+(1|date_trial),
+                                         prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
+                                                 set_prior("normal(0,3)",class="Intercept")),
+                                         family="bernoulli",data=pref_stat_TLC_HC,chains=5,
+                                         iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod1.208_light_cat,"Models/mod1.208_light_cat.rds")
+}
+```
+
+Now we run the model with the corrected log-illuminance values:
+```{r}
+if(file.exists("Models/mod1.208_corrected_final.rds")){
+  mod1.208_corrected_final<-readRDS("Models/mod1.208_corrected_final.rds")
+} else{
+mod1.208_corrected_final<-suppressMessages(brm(court_lin_heu_01~type*log_light_HC_corrected+(1|ID)+(1|date_trial),
+                                               prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
+                                                       set_prior("normal(0,3)",class="Intercept")),
+                                               family="bernoulli",data=pref_stat_TLC_HC,chains=5,
+                                               iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod1.208_corrected_final,"Models/mod1.208_corrected_final.rds")
+}
+```
+
+We also re-run the best-fitting categorical model with the full dataset.
 ```{r}
 #Exclude NA measurements
-mod1.208_cat<-suppressMessages(brm(court_lin_heu_01~type*quantile_low_up+(1|ID)+(1|date_trial),
+if(file.exists("Models/mod1.208_cat.rds")){
+  mod1.208_cat<-readRDS("Models/mod1.208_cat.rds")
+} else{
+mod1.208_cat<-suppressMessages(brm(court_lin_heu_01~type*quantile_low_up_1+(1|ID)+(1|date_trial),
                                    prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
                                            set_prior("normal(0,3)",class="Intercept")),
-                                   family="bernoulli",data=pref_stat_TLC_HC[pref_stat_TLC_HC$quantile_low_up!="qNA",],chains=5,
+                                   family="bernoulli",data=pref_stat_TLC_HC,chains=5,
                                    iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=14))
+saveRDS(mod1.208_cat,"Models/mod1.208_cat.rds")
+}
 ```
 
-We return back to the main model.
+We return back to the main model fitted to the continuous data.
 
 Let's do some quick model checking. We see "hairy caterpillars" in the trace plots on the right, which is a good sign (the MCMC algorithm covered parameter space well)!
 ```{r}
-plot(mod1.208)
+plot(mod1.208_final)
 ```
 
 Some posterior predictive checks to compare model predictions to actual data. Looks like a good fit!
 ```{r}
-suppressMessages(pp_check(mod1.208))
+suppressMessages(pp_check(mod1.208_final))
 ```
 
 Now let's have a quick look at the model coefficients. Annotation of `type`{.R} is numeric due to `contr.sum()`{.R} dummy coding:
 ```{r}
-fixef(mod1.208)[,1]
+fixef(mod1.208_final)[,1]
 ```
 
 Next, we want to look at model estimators (estimated marginal means) and contrasts. We use the awesome `emmeans`{.R} package to extract posteriors for estimators and contrasts.
@@ -631,7 +1369,7 @@ extract_emm_cri<-function(emm_object,middle="mean",type0.95="eti"){
 
 Let's look at the credible intervals for `type`{.R} alone. We first create an `emmeans`{.R} object.
 ```{r}
-group_est_main<-suppressWarnings(suppressMessages(emmeans(mod1.208, ~type, transform="response")))
+group_est_main<-suppressWarnings(suppressMessages(emmeans(mod1.208_final, ~type, transform="response")))
 ```
 
 We could call the `extract_emm_cri`{.R} function we just created; but for now, we actually also need the posteriors, so we do this manually.
@@ -667,7 +1405,6 @@ Now we test how likely it is that the predictors for *lin* and *heu* differ. We 
 3) *lin* males show a preference for their own type.
 
 While hypothesis 1) is of high interest, 2) and 3) don't matter very much. 0.5 is a meaningless "null-hypothesis", which doesn'tmake much sense when testing males with dead, mounted females. What matters is that their visual attraction diverges!
-
 ```{r}
 print(data.frame(test=c("HC-TLC > 0","HC > 0","TLC < 0"),posterior_prop=c(sum(difference_posterior_main>0)/length(difference_posterior_main),sum(HC_posterior_main>0.5)/length(HC_posterior_main),sum(TLC_posterior_main<0.5)/length(TLC_posterior_main))))
 ```
@@ -678,10 +1415,10 @@ Now, let's look at the **simple** slopes of the interaction terms between `type`
 
 This gets us the 'simple slopes' from the interaction term. We use the `emtrends`{.R} function for that.
 ```{r}
-group_est_main_interact<-suppressWarnings(suppressMessages(emtrends(mod1.208, ~ type, var="log_light_HC.z",transform="response")))
+group_est_main_interact<-suppressWarnings(suppressMessages(emtrends(mod1.208_final, ~ type, var="log_light_HC",transform="response")))
 ```
 
-Note: this is not the true slope at all points along the gradient. The interaction term is in fact not linear. Retrieving the **simple** slope is the general solution to describe the 'trend' of an interaction. Also, this slope is quite hard to interpret (better is the vsualization, which follows later), as it refers to the centered&scaled illuminance measures. What matters to us now is into which direction these two slopes differ from 0 and if they are different from each other.
+Note: this is not the true slope at all points along the gradient. The interaction term is in fact not linear. Retrieving the **simple** slope is the general solution to describe the 'trend' of an interaction. What matters to us now is into which direction these two slopes differ from 0 and if they are different from each other.
 
 We print the mean and 95% equal-tailed interval for these slopes.
 ```{r}
@@ -693,6 +1430,12 @@ We get the posteriors for the simple slopes
 group_posteriors_main_interact<-extract_emm_posterior(group_est_main_interact)
 ```
 
+We get a difference posterior for the slopes.
+```{r}
+difference_posterior_slopes<-group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]-group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]
+```
+
+
 We use the same hypotheses as before. In the interaction term context, they mean something slightly different though.
 
 1) The slope of the interaction term between *lin* and log-illuminance at *heu* 'female' is smaller than that of the interaction term between *heu* and log-illuminance at *heu* 'female'.
@@ -701,7 +1444,7 @@ We use the same hypotheses as before. In the interaction term context, they mean
 ```{r}
 iterations<-nrow(group_posteriors_main_interact)/2
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"])/iterations,sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>0)/iterations,
+                 posterior_prob=c(sum(difference_posterior_slopes>0)/iterations,sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>0)/iterations,
                                   sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]<0)/iterations)))
 ```
 
@@ -711,7 +1454,7 @@ We repeat a similar procedure with the categorical illuminace model, `mod1.208_c
 
 Extract the posteriors for all levels of type from the categorical model, under varying categorical illumination at *heu* model
 ```{r}
-group_est_cat<-suppressWarnings(suppressMessages(emmeans(mod1.208_cat, ~type|quantile_low_up, transform="response")))
+group_est_cat<-suppressWarnings(suppressMessages(emmeans(mod1.208_cat, ~type|quantile_low_up_1, transform="response")))
 ```
 
 We extract the posteriors.
@@ -721,10 +1464,10 @@ group_posteriors_cat<-extract_emm_posterior(group_est_cat)
 
 Split posteriors by type and illuminance
 ```{r}
-TLC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up=="q1"]
-HC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up=="q1"]
-TLC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up=="q2"]
-HC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up=="q2"]
+TLC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up_1=="q1"]
+HC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up_1=="q1"]
+TLC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up_1=="q2"]
+HC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors"
@@ -748,25 +1491,111 @@ The description of the following is reduced to the minimum, since it's basically
 
 First, we repeat what we just did for the main model, and estimate the interaction term with log-illuminance at the *heu* model.
 ```{r}
-group_est_main_interact<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_HC.z",transform="response")))
-group_posteriors_main_interact<-extract_emm_posterior(group_est_main_interact)
-iterations<-nrow(group_posteriors_main_interact)/2
+group_est_three_way_HC<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_HC",transform="response")))
+group_posteriors_three_way_HC<-extract_emm_posterior(group_est_three_way_HC)
+iterations<-nrow(group_posteriors_three_way_HC)/2
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"])/iterations,sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="HC"]>group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="TLC"])/iterations,sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="HC"]>0)/iterations,
+                                  sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="TLC"]<0)/iterations)))
 ```
 
 Looks the same. Now we repeat the same for the interaction term with log-illuminance at the *lin* model. We use the same hypotheses, i.e. that more intense light on the 'female' increase preference for own female type in both male types, and that both responses are in opposite directions.
 ```{r}
-group_est_main_interact<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_TLC.z",transform="response")))
-group_posteriors_main_interact<-extract_emm_posterior(group_est_main_interact)
-iterations<-nrow(group_posteriors_main_interact)/2
+group_est_three_way_TLC<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_TLC",transform="response")))
+group_posteriors_three_way_TLC<-extract_emm_posterior(group_est_three_way_TLC)
+iterations<-nrow(group_posteriors_three_way_TLC)/2
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"])/iterations,sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="HC"]>group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="TLC"])/iterations,sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="HC"]>0)/iterations,
+                                  sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="TLC"]<0)/iterations)))
 ```
 
 We see very weak support for log-illuminance at the *lin* 'female' having much of an effect (posterior probabilities are neither close to 1, nor to 0). It's clear that light at the *lin* 'female' seems to not affect preference of either type very much.
+
+Finally, we look at the "corrected" log-illuminance scores and check if the slopes for *heu* and *lin* males differ in this model, and also if the slopes from this corrected model differ from the model without correction.
+
+This gets us the 'simple slopes' from the interaction term.
+```{r}
+group_est_main_interact_corrected<-suppressWarnings(suppressMessages(emtrends(mod1.208_corrected_final, ~ type, var="log_light_HC_corrected",transform="response")))
+```
+
+We print the mean and 95% equal-tailed interval for these slopes.
+```{r}
+print(extract_emm_cri(group_est_main_interact_corrected))
+```
+
+It seems they are very similar to the model with uncorrected values!
+
+We get the posteriors for the simple slopes
+```{r}
+group_posteriors_main_interact_corrected<-extract_emm_posterior(group_est_main_interact_corrected)
+```
+
+We get a difference posterior for the slopes.
+```{r}
+difference_posterior_slopes_corrected<-group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]-group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]
+```
+
+First, test again the following hypothesis:
+
+1) The slope of the interaction term between *lin* and log-illuminance at *heu* 'female' is smaller than that of the interaction term between *heu* and log-illuminance at *heu* 'female'.
+2) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *heu* males for their own type (positive slope). 
+3) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *lin* males for their own type (negative slope).
+```{r}
+iterations<-nrow(group_posteriors_main_interact_corrected)/2
+print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
+                 posterior_prob=c(sum(difference_posterior_slopes_corrected>0)/iterations,sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]>0)/iterations,
+                                  sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]<0)/iterations)))
+```
+
+Again, with high probability, the slopes of the two interaction terms differ. 
+
+Now we test which proportion of the posteriors of the slopes from the corrected model differs from the means of the posteriors from the uncorrected model. We don't just test whether they differ, but in which direction they differ. If the correction indeed helps us to see the divergence in preferences more clearly, we expect the slope for *heu* males to be steeper and for *lin* males to be less steep in the corrected model. This will also be seen in the proportion of the difference posterior being bigger than the mean of the difference posterior without correction.
+```{r}
+iterations<-nrow(group_posteriors_main_interact_corrected)/2
+print(data.frame(test=c("HC (corrected) > HC (uncorrected)","TLC (corrected) < TLC (uncorrected)","HC-TLC (corrected) > HC-TLC (uncorrected)"),
+                 posterior_prob=c(sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]>mean(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]))/iterations,sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]<mean(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]))/iterations,sum(difference_posterior_slopes_corrected>mean(difference_posterior_slopes))/iterations)))
+```
+
+Indeed, we do find a very slight 'improvement'. The slope for *heu* males is slightly steeper and for *lin* males slightly less steep, therefore the difference of the slopes is being than for the model on the uncorrected data. But the improvement is very weak.
+
+As a last step, we also extract the posteriors from the model exploring different light environment classes.
+
+Extract the posteriors for all levels of type from the categorical model, under varying light environment class at *heu* model
+```{r}
+group_est_light_class<-suppressWarnings(suppressMessages(emmeans(mod1.208_light_cat, ~type|light_class_HC, transform="response")))
+```
+
+We extract the posteriors.
+```{r}
+group_posteriors_light_class<-extract_emm_posterior(group_est_light_class)
+```
+
+Split posteriors by type and illuminance
+```{r}
+TLC_posterior_light_class_1<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="sunny"]
+HC_posterior_light_class_1<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="sunny"]
+TLC_posterior_light_class_2<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="cloudy"]
+HC_posterior_light_class_2<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="cloudy"]
+TLC_posterior_light_class_3<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="sunny_but_treeshade"]
+HC_posterior_light_class_3<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="sunny_but_treeshade"]
+```
+
+Create "difference posteriors"
+```{r}
+difference_posterior_light_class_1<-HC_posterior_light_class_1-TLC_posterior_light_class_1
+difference_posterior_light_class_2<-HC_posterior_light_class_2-TLC_posterior_light_class_2
+difference_posterior_light_class_3<-HC_posterior_light_class_3-TLC_posterior_light_class_3
+```
+
+Now we take a look at mean and 95% CrI for *lin*, *heu* and the difference between them.
+```{r}
+est_light_class<-data.frame(rep(c("TLC","HC","HC-TLC"),3),rep(c("sunny","cloudy","woodland shade"),each=3),rbind(c(mean(TLC_posterior_light_class_1),quantile(TLC_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_1),quantile(HC_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_1),quantile(difference_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(TLC_posterior_light_class_2),quantile(TLC_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_2),quantile(HC_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_2),quantile(difference_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(TLC_posterior_light_class_3),quantile(TLC_posterior_light_class_3,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_3),quantile(HC_posterior_light_class_3,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_3),quantile(difference_posterior_light_class_3,probs=c(0.025,0.975)))))
+
+names(est_light_class)<-c("object","light_class_heu","mean","lower","upper")
+print(est_light_class)
+```
+
+There seems to be again a striking effect of sunny conditions on attraction of *heu* males to the *heu* phenotype!
 
 #### Effect of presence/absence of red colour in backcross hybrids and its interaction with illuminance measures on visual mate preference
 
@@ -776,14 +1605,19 @@ We set the same weak priors for genotype as we did before for `type`{.R}.
 
 We encountered the exact same problems when including `date`{.R} (with `date_trial`{.R} nested) and `observer`{.R} as random effects. We won't show this here, but start right away with the same type of model structure as `mod1.2`{.R} above.
 
-Since we can track hybrid broods, we decide to include `broods`{.R} nested in `exp_line`{.R} as random effect. Remember: `broods`{.R} explains relationships at the sibling-level, while `exp_line`{.R} explains relationship at the grandchildren-level. Since the model gets more complex, we increase the `adapt_delta`{.R} parameter, which makes the MCMC algorith taking "smaller steps" and therefore avoiding convergence issues.
+Since we can track hybrid broods, we decide to include `broods`{.R} nested in `exp_line`{.R} as random effect. Remember: `broods`{.R} explains relationships at the sibling-level, while `exp_line`{.R} explains relationship at the grandchildren-level. Since the model gets more complex, we increase the `adapt_delta`{.R} parameter, which makes the MCMC algorith take "smaller steps" and therefore avoiding convergence issues.
 ```{r}
-mod2.2_with_exp_line<-suppressMessages(brm(court_lin_heu_01~redYN*log_light_HC.z*log_light_TLC.z+(1|ID)+(1|date_trial)+(1|exp_line/broods),
+if(file.exists("Models/mod2.2_with_exp_line.rds")){
+  mod2.2_with_exp_line<-readRDS("Models/mod2.2_with_exp_line.rds")
+} else{
+mod2.2_with_exp_line<-suppressMessages(brm(court_lin_heu_01~redYN*log_light_HC*log_light_TLC+(1|ID)+(1|date_trial)+(1|exp_line/broods),
                prior=c(set_prior("normal(0,3)",class="b",coef="redYN1"),
                        set_prior("normal(0,3)",class="Intercept")),
                family="bernoulli",data=pref_stat_BC,chains=5,
                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=24,
                                   control = list(adapt_delta = 0.99)))
+saveRDS(mod2.2_with_exp_line,"Models/mod2.2_with_exp_line.rds")
+}
 ```
 
 We can see quickly that `exp_line`{.R} is causing trouble. Our model does not converge well because we have too many group-level states with often too few observations per individual level. 
@@ -800,114 +1634,339 @@ VarCorr(mod2.2_with_exp_line)
 
 Therefore, we remove `exp_line`{.R} from our model, but instead look separately at the different experimental lines later (see below). We create a new model without `exp_line`{.R}.
 ```{r}
+if(file.exists("Models/mod2.2.rds")){
+  mod2.2<-readRDS("Models/mod2.2.rds")
+} else{
 mod2.2<-suppressMessages(update(mod2.2_with_exp_line, formula. =  ~ . - (1|exp_line/broods) + (1|broods),refresh=0,silent = TRUE,seed=25))
+saveRDS(mod2.2,"Models/mod2.2.rds")
+}
 ```
 
 We again reduce the dataset to non-`NA`{.R}
 ```{r}
-pref_stat_BC_red<-pref_stat_BC[!is.na(pref_stat_BC$log_light_HC.z)&!is.na(pref_stat_BC$log_light_TLC.z),]
+pref_stat_BC_red<-pref_stat_BC[!is.na(pref_stat_BC$log_light_HC)&!is.na(pref_stat_BC$log_light_TLC),]
 #For safety, we drop levels (seems to cause some problems if we don't)
 pref_stat_BC_red<-droplevels(pref_stat_BC_red)
 ```
 
 We build the reduced version of the model. For safety, we build it from scratch, so there is no problem with the adaptation of the precompiled model.
 ```{r}
-mod2.2_red<-suppressMessages(brm(court_lin_heu_01~redYN*log_light_HC.z*log_light_TLC.z+(1|ID)+(1|date_trial)+(1|broods),
+if(file.exists("Models/mod2.2_red.rds")){
+  mod2.2_red<-readRDS("Models/mod2.2_red.rds")
+} else{
+mod2.2_red<-suppressMessages(brm(court_lin_heu_01~redYN*log_light_HC*log_light_TLC+(1|ID)+(1|date_trial)+(1|broods),
                prior=c(set_prior("normal(0,3)",class="b",coef="redYN1"),
                        set_prior("normal(0,3)",class="Intercept")),
                family="bernoulli",data=pref_stat_BC_red,chains=5,
                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=26,
                                   control = list(adapt_delta = 0.99)))
+saveRDS(mod2.2_red,"Models/mod2.2_red.rds")
+}
 ```
 
 Now we check which fixed effects we want to use. We again try out all possible combinations of the model.
+
+Load/create the results table
+```{r}
+#If exists, read in
+if(file.exists("Tables/WAIC_backcross.csv")){
+  IC_table<-read.csv("Tables/WAIC_backcross.csv",header=T,stringsAsFactors = F)[,1:3]
+} else{
+  #Make empty table
+  IC_table<-data.frame(Model=character(0),
+                       LOOIC=numeric(0),WAIC=numeric(0),stringsAsFactors = F)
+}
+```
+
+Now run the models.
 ```{r}
 #The null model (all fixed effects and interactions removed)
-mod2.200 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_HC.z - log_light_TLC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=27))
+if(!"mod2.200"%in%IC_table$Model){
+if(file.exists("Models/mod2.200.rds")){
+  mod2.200<-readRDS("Models/mod2.200.rds")
+} else{
+mod2.200 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_HC - log_light_TLC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=27))
+saveRDS(mod2.200,"Models/mod2.200.rds")
+}
+  loo_new<-loo(mod2.200)$estimates[3,1]
+  waic_new<-waic(mod2.200)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.200",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.200)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model only including redYN as fixed
-mod2.201 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC.z - log_light_TLC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=28))
+if(!"mod2.201"%in%IC_table$Model){
+if(file.exists("Models/mod2.201.rds")){
+  mod2.201<-readRDS("Models/mod2.201.rds")
+} else{
+mod2.201 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC - log_light_TLC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=28))
+saveRDS(mod2.201,"Models/mod2.201.rds")
+}
+  loo_new<-loo(mod2.201)$estimates[3,1]
+  waic_new<-waic(mod2.201)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.201",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.201)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model only including log-illuminance at heu 'female'
-mod2.202 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_TLC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=29))
+if(!"mod2.202"%in%IC_table$Model){
+if(file.exists("Models/mod2.202.rds")){
+  mod2.202<-readRDS("Models/mod2.202.rds")
+} else{
+mod2.202 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_TLC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=29))
+saveRDS(mod2.202,"Models/mod2.202.rds")
+}
+  loo_new<-loo(mod2.202)$estimates[3,1]
+  waic_new<-waic(mod2.202)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.202",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.202)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model only including log-illuminance at lin 'female'
-mod2.203 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_HC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=30))
+if(!"mod2.203"%in%IC_table$Model){
+if(file.exists("Models/mod2.203.rds")){
+  mod2.203<-readRDS("Models/mod2.203.rds")
+} else{
+mod2.203 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - log_light_HC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=30))
+saveRDS(mod2.203,"Models/mod2.203.rds")
+}
+  loo_new<-loo(mod2.203)$estimates[3,1]
+  waic_new<-waic(mod2.203)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.203",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.203)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN and log-illuminance at heu 'female'
-mod2.204 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_TLC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=31))
+if(!"mod2.204"%in%IC_table$Model){
+if(file.exists("Models/mod2.204.rds")){
+  mod2.204<-readRDS("Models/mod2.204.rds")
+} else{
+mod2.204 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_TLC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=31))
+saveRDS(mod2.204,"Models/mod2.204.rds")
+}
+  loo_new<-loo(mod2.204)$estimates[3,1]
+  waic_new<-waic(mod2.204)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.204",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.204)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN and log-illuminance at lin 'female'
-mod2.205 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC.z - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=32))
+if(!"mod2.205"%in%IC_table$Model){
+if(file.exists("Models/mod2.205.rds")){
+  mod2.205<-readRDS("Models/mod2.205.rds")
+} else{
+mod2.205 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=32))
+saveRDS(mod2.205,"Models/mod2.205.rds")
+}
+  loo_new<-loo(mod2.205)$estimates[3,1]
+  waic_new<-waic(mod2.205)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.205",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.205)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including log-illuminance at heu 'female' and log-illuminance at lin 'female'
-mod2.206 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=33))
+if(!"mod2.206"%in%IC_table$Model){
+if(file.exists("Models/mod2.206.rds")){
+  mod2.206<-readRDS("Models/mod2.206.rds")
+} else{
+mod2.206 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=33))
+saveRDS(mod2.206,"Models/mod2.206.rds")
+}
+  loo_new<-loo(mod2.206)$estimates[3,1]
+  waic_new<-waic(mod2.206)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.206",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.206)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female' and log-illuminance at lin 'female'
-mod2.207 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=34))
+if(!"mod2.207"%in%IC_table$Model){
+if(file.exists("Models/mod2.207.rds")){
+  mod2.207<-readRDS("Models/mod2.207.rds")
+} else{
+mod2.207 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=34))
+saveRDS(mod2.207,"Models/mod2.207.rds")
+}
+  loo_new<-loo(mod2.207)$estimates[3,1]
+  waic_new<-waic(mod2.207)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.207",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.207)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female' and their interaction
-mod2.208 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_TLC.z - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=35))
+if(!"mod2.208"%in%IC_table$Model){
+if(file.exists("Models/mod2.208.rds")){
+  mod2.208<-readRDS("Models/mod2.208.rds")
+} else{
+mod2.208 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_TLC - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=35))
+saveRDS(mod2.208,"Models/mod2.208.rds")
+}
+  loo_new<-loo(mod2.208)$estimates[3,1]
+  waic_new<-waic(mod2.208)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.208",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.208)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at lin 'female' and their interaction
-mod2.209 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC.z - redYN:log_light_HC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=36))
+if(!"mod2.209"%in%IC_table$Model){
+if(file.exists("Models/mod2.209.rds")){
+  mod2.209<-readRDS("Models/mod2.209.rds")
+} else{
+mod2.209 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC - redYN:log_light_HC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=36))
+saveRDS(mod2.209,"Models/mod2.209.rds")
+}
+  loo_new<-loo(mod2.209)$estimates[3,1]
+  waic_new<-waic(mod2.209)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.209",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.209)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including log-illuminance at heu 'female', log-illuminance at lin 'female' and their interaction
-mod2.210 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - redYN:log_light_HC.z - redYN:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=37))
+if(!"mod2.210"%in%IC_table$Model){
+if(file.exists("Models/mod2.210.rds")){
+  mod2.210<-readRDS("Models/mod2.210.rds")
+} else{
+mod2.210 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN - redYN:log_light_HC - redYN:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=37))
+saveRDS(mod2.210,"Models/mod2.210.rds")
+}
+  loo_new<-loo(mod2.210)$estimates[3,1]
+  waic_new<-waic(mod2.210)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.210",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.210)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between redYN and log-illuminance at heu 'female'
-mod2.211 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_TLC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=38))
+if(!"mod2.211"%in%IC_table$Model){
+if(file.exists("Models/mod2.211.rds")){
+  mod2.211<-readRDS("Models/mod2.211.rds")
+} else{
+mod2.211 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_TLC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=38))
+saveRDS(mod2.211,"Models/mod2.211.rds")
+}
+  loo_new<-loo(mod2.211)$estimates[3,1]
+  waic_new<-waic(mod2.211)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.211",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.211)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between redYN and log-illuminance at lin 'female'
-mod2.212 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=39))
+if(!"mod2.212"%in%IC_table$Model){
+if(file.exists("Models/mod2.212.rds")){
+  mod2.212<-readRDS("Models/mod2.212.rds")
+} else{
+mod2.212 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=39))
+saveRDS(mod2.212,"Models/mod2.212.rds")
+}
+  loo_new<-loo(mod2.212)$estimates[3,1]
+  waic_new<-waic(mod2.212)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.212",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.212)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female' and the interaction between the two log-illuminance measures
-mod2.213 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z - redYN:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=40))
+if(!"mod2.213"%in%IC_table$Model){
+if(file.exists("Models/mod2.213.rds")){
+  mod2.213<-readRDS("Models/mod2.213.rds")
+} else{
+mod2.213 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC - redYN:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=40))
+saveRDS(mod2.213,"Models/mod2.213.rds")
+}
+  loo_new<-loo(mod2.213)$estimates[3,1]
+  waic_new<-waic(mod2.213)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.213",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.213)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between redYN and log-illuminance at heu 'female' and the interaction between the two log-illuminance measures
-mod2.214 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=41))
+if(!"mod2.214"%in%IC_table$Model){
+if(file.exists("Models/mod2.214.rds")){
+  mod2.214<-readRDS("Models/mod2.214.rds")
+} else{
+mod2.214 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=41))
+saveRDS(mod2.214,"Models/mod2.214.rds")
+}
+  loo_new<-loo(mod2.214)$estimates[3,1]
+  waic_new<-waic(mod2.214)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.214",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.214)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between redYN and log-illuminance at lin 'female' and the interaction between the two log-illuminance measures
-mod2.215 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=42))
+if(!"mod2.215"%in%IC_table$Model){
+if(file.exists("Models/mod2.215.rds")){
+  mod2.215<-readRDS("Models/mod2.215.rds")
+} else{
+mod2.215 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=42))
+saveRDS(mod2.215,"Models/mod2.215.rds")
+}
+  loo_new<-loo(mod2.215)$estimates[3,1]
+  waic_new<-waic(mod2.215)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.215",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.215)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female', the interaction between redYN and log-illuminance at heu 'female' and the interaction between redYN and log-illuminance at lin 'female'
-mod2.216 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC.z:log_light_TLC.z - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=43))
+if(!"mod2.216"%in%IC_table$Model){
+if(file.exists("Models/mod2.216.rds")){
+  mod2.216<-readRDS("Models/mod2.216.rds")
+} else{
+mod2.216 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - log_light_HC:log_light_TLC - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=43))
+saveRDS(mod2.216,"Models/mod2.216.rds")
+}
+  loo_new<-loo(mod2.216)$estimates[3,1]
+  waic_new<-waic(mod2.216)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.216",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.216)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 #The model including redYN, log-illuminance at heu 'female', log-illuminance at lin 'female' and all two-way interactions
-mod2.217 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC.z:log_light_TLC.z,refresh=0,silent = TRUE,seed=44))
+if(!"mod2.217"%in%IC_table$Model){
+if(file.exists("Models/mod2.217.rds")){
+  mod2.217<-readRDS("Models/mod2.217.rds")
+} else{
+mod2.217 <- suppressMessages(update(mod2.2_red, formula. =  ~ . - redYN:log_light_HC:log_light_TLC,refresh=0,silent = TRUE,seed=44))
+saveRDS(mod2.217,"Models/mod2.217.rds")
+}
+  loo_new<-loo(mod2.217)$estimates[3,1]
+  waic_new<-waic(mod2.217)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.217",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod2.217)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 ```
 
-Calculate LOOIC and WAIC for `mod2.2_red`{.R} and all nested, reduced models. We do this in a big chunk of code because (unlike for the pure males), these models are too big to allocate enough memory for running them all in one line.
+now, we calculate WAIC and LOOIC of the full model.
 ```{r}
-all_looic<-rep(NA,19)
-all_looic[1]<-loo(mod2.2_red)$estimates[3,1]
-all_looic[2]<-loo(mod2.200)$estimates[3,1]
-all_looic[3]<-loo(mod2.201)$estimates[3,1]
-all_looic[4]<-loo(mod2.202)$estimates[3,1]
-all_looic[5]<-loo(mod2.203)$estimates[3,1]
-all_looic[6]<-loo(mod2.204)$estimates[3,1]
-all_looic[7]<-loo(mod2.205)$estimates[3,1]
-all_looic[8]<-loo(mod2.206)$estimates[3,1]
-all_looic[9]<-loo(mod2.207)$estimates[3,1]
-all_looic[10]<-loo(mod2.208)$estimates[3,1]
-all_looic[11]<-loo(mod2.209)$estimates[3,1]
-all_looic[12]<-loo(mod2.210)$estimates[3,1]
-all_looic[13]<-loo(mod2.211)$estimates[3,1]
-all_looic[14]<-loo(mod2.212)$estimates[3,1]
-all_looic[15]<-loo(mod2.213)$estimates[3,1]
-all_looic[16]<-loo(mod2.214)$estimates[3,1]
-all_looic[17]<-loo(mod2.215)$estimates[3,1]
-all_looic[18]<-loo(mod2.216)$estimates[3,1]
-all_looic[19]<-loo(mod2.217)$estimates[3,1]
-
-all_waic<-rep(NA,19)
-all_waic[1]<-waic(mod2.2_red)$estimates[3,1]
-all_waic[2]<-waic(mod2.200)$estimates[3,1]
-all_waic[3]<-waic(mod2.201)$estimates[3,1]
-all_waic[4]<-waic(mod2.202)$estimates[3,1]
-all_waic[5]<-waic(mod2.203)$estimates[3,1]
-all_waic[6]<-waic(mod2.204)$estimates[3,1]
-all_waic[7]<-waic(mod2.205)$estimates[3,1]
-all_waic[8]<-waic(mod2.206)$estimates[3,1]
-all_waic[9]<-waic(mod2.207)$estimates[3,1]
-all_waic[10]<-waic(mod2.208)$estimates[3,1]
-all_waic[11]<-waic(mod2.209)$estimates[3,1]
-all_waic[12]<-waic(mod2.210)$estimates[3,1]
-all_waic[13]<-waic(mod2.211)$estimates[3,1]
-all_waic[14]<-waic(mod2.212)$estimates[3,1]
-all_waic[15]<-waic(mod2.213)$estimates[3,1]
-all_waic[16]<-waic(mod2.214)$estimates[3,1]
-all_waic[17]<-waic(mod2.215)$estimates[3,1]
-all_waic[18]<-waic(mod2.216)$estimates[3,1]
-all_waic[19]<-waic(mod2.217)$estimates[3,1]
+if(!"mod2.2_red"%in%IC_table$Model){
+  loo_new<-loo(mod2.2_red)$estimates[3,1]
+  waic_new<-waic(mod2.2_red)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod2.2_red",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+  rm(mod2.2_red)
+  invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
+}
 ```
 
-To create model weights based on WAIC, we use the same method as above.
+Model weights
 ```{r}
-ic_diffs <- all_waic - min(all_waic)
+ic_diffs <- IC_table$WAIC - min(IC_table$WAIC)
 out <- exp(-ic_diffs / 2)
 out <- as.numeric(out)
 out <- out / sum(out)
@@ -915,9 +1974,7 @@ out <- out / sum(out)
 
 We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate WAIC differences between best fitting model and the other models. We then sort this table by WAIC value and view it.
 ```{r rows.print=19}
-IC_table<-data.frame(Model=c("mod2.2_red",paste0("mod2.2",ifelse((0:17)<10,paste0("0",0:17),0:17))),
-                     LOOIC=all_looic,WAIC=all_waic,
-                     WAIC_Diff=ic_diffs,WAIC_weight=out)
+IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
 cbind(Model=IC_table[,1],round(IC_table[,-1],2))
 ```
@@ -934,28 +1991,365 @@ We safe this table:
 write.csv(IC_table,"Tables/WAIC_backcross.csv",row.names=F,quote=F)
 ```
 
-For visualization purposes later, we use the same model structure to generate a new "categorical" illuminance model, where we split log-illuminance at the *heu* model and at the *lin* into dark and bright, following the median measures of the dataset. We have to add two new columns for that, putting rows into each of the two times two classes.
+We again repeat this model selection with categorical illuminance models. We split log-illuminance at the *heu* model and at the *lin* into dark and bright, following the median measurements of the dataset. We have to add two new columns for that, putting rows into each of the two times two classes.
 ```{r}
-pref_stat_BC$quantile_low_up_1<-as.integer(cut(pref_stat_BC$log_light_HC.z, quantile(pref_stat_BC$log_light_HC.z, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
+pref_stat_BC$quantile_low_up_1<-as.integer(cut(pref_stat_BC$log_light_HC, quantile(pref_stat_BC$log_light_HC, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
 pref_stat_BC$quantile_low_up_1<-paste0("q",pref_stat_BC$quantile_low_up_1)
-pref_stat_BC$quantile_low_up_2<-as.integer(cut(pref_stat_BC$log_light_TLC.z, quantile(pref_stat_BC$log_light_TLC.z, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
+pref_stat_BC$quantile_low_up_1[pref_stat_BC$quantile_low_up_1=="qNA"]<-NA
+pref_stat_BC$quantile_low_up_2<-as.integer(cut(pref_stat_BC$log_light_TLC, quantile(pref_stat_BC$log_light_TLC, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
 pref_stat_BC$quantile_low_up_2<-paste0("q",pref_stat_BC$quantile_low_up_2)
+pref_stat_BC$quantile_low_up_2[pref_stat_BC$quantile_low_up_2=="qNA"]<-NA
 ```
 
-We run the categorical model (we again use the same seed as before, but it again doesn't matter at all really).
+We again run all the 19 possible nested categorical models, just as we did before for the continuous data.
+
+The full model based on the reduced dataset (i.e. without `NA`{.R}):
 ```{r}
-#Exclude NA measurements
-mod2.2_cat<-suppressMessages(brm(court_lin_heu_01~redYN*quantile_low_up_1*quantile_low_up_2+(1|ID)+(1|date_trial)+(1|broods),
+if(file.exists("Models/mod_CAT_2.2_red.rds")){
+  mod_CAT_2.2_red<-readRDS("Models/mod_CAT_2.2_red.rds")
+} else{
+  mod_CAT_2.2_red<-suppressMessages(brm(court_lin_heu_01~redYN*quantile_low_up_1*quantile_low_up_2+(1|ID)+(1|date_trial)+(1|broods),
+                                        prior=c(set_prior("normal(0,3)",class="b",coef="redYN1"),
+                                                set_prior("normal(0,3)",class="Intercept")),
+                                        family="bernoulli",data=pref_stat_BC_red,chains=5,
+                                        iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=26,control = list(adapt_delta = 0.99)))
+  saveRDS(mod_CAT_2.2_red,"Models/mod_CAT_2.2_red.rds")
+}
+```
+
+First, we load/create again the table:
+```{r}
+#If exists, read in
+if(file.exists("Tables/WAIC_backcross_CAT.csv")){
+  IC_table<-read.csv("Tables/WAIC_backcross_CAT.csv",header=T,stringsAsFactors = F)[,1:3]
+} else{
+  #Make empty table
+  IC_table<-data.frame(Model=character(0),
+                       LOOIC=numeric(0),WAIC=numeric(0),stringsAsFactors = F)
+}
+```
+
+
+And all other variations...
+```{r}
+#The null model (all fixed effects and interactions removed)
+if(!"mod_CAT_2.200"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.200.rds")){
+  mod_CAT_2.200<-readRDS("Models/mod_CAT_2.200.rds")
+} else{
+mod_CAT_2.200 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN - quantile_low_up_1 - quantile_low_up_2 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=27))
+saveRDS(mod_CAT_2.200,"Models/mod_CAT_2.200.rds")
+}
+  loo_new<-loo(mod_CAT_2.200)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.200)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.200",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.200)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model only including redYN as fixed
+if(!"mod_CAT_2.201"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.201.rds")){
+  mod_CAT_2.201<-readRDS("Models/mod_CAT_2.201.rds")
+} else{
+mod_CAT_2.201 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_1 - quantile_low_up_2 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=28))
+saveRDS(mod_CAT_2.201,"Models/mod_CAT_2.201.rds")
+}
+  loo_new<-loo(mod_CAT_2.201)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.201)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.201",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.201)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model only including categorical illuminance at heu 'female'
+if(!"mod_CAT_2.202"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.202.rds")){
+  mod_CAT_2.202<-readRDS("Models/mod_CAT_2.202.rds")
+} else{
+mod_CAT_2.202 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN - quantile_low_up_2 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=29))
+saveRDS(mod_CAT_2.202,"Models/mod_CAT_2.202.rds")
+}
+  loo_new<-loo(mod_CAT_2.202)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.202)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.202",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.202)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model only including categorical illuminance at lin 'female'
+if(!"mod_CAT_2.203"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.203.rds")){
+  mod_CAT_2.203<-readRDS("Models/mod_CAT_2.203.rds")
+} else{
+mod_CAT_2.203 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN - quantile_low_up_1 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=30))
+saveRDS(mod_CAT_2.203,"Models/mod_CAT_2.203.rds")
+}
+  loo_new<-loo(mod_CAT_2.203)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.203)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.203",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.203)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN and categorical illuminance at heu 'female'
+if(!"mod_CAT_2.204"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.204.rds")){
+  mod_CAT_2.204<-readRDS("Models/mod_CAT_2.204.rds")
+} else{
+mod_CAT_2.204 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_2 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=31))
+saveRDS(mod_CAT_2.204,"Models/mod_CAT_2.204.rds")
+}
+  loo_new<-loo(mod_CAT_2.204)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.204)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.204",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.204)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN and categorical illuminance at lin 'female'
+if(!"mod_CAT_2.205"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.205.rds")){
+  mod_CAT_2.205<-readRDS("Models/mod_CAT_2.205.rds")
+} else{
+mod_CAT_2.205 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_1 - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=32))
+saveRDS(mod_CAT_2.205,"Models/mod_CAT_2.205.rds")
+}
+  loo_new<-loo(mod_CAT_2.205)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.205)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.205",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.205)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including categorical illuminance at heu 'female' and categorical illuminance at lin 'female'
+if(!"mod_CAT_2.206"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.206.rds")){
+  mod_CAT_2.206<-readRDS("Models/mod_CAT_2.206.rds")
+} else{
+mod_CAT_2.206 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=33))
+saveRDS(mod_CAT_2.206,"Models/mod_CAT_2.206.rds")
+}
+  loo_new<-loo(mod_CAT_2.206)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.206)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.206",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.206)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female' and categorical illuminance at lin 'female'
+if(!"mod_CAT_2.207"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.207.rds")){
+  mod_CAT_2.207<-readRDS("Models/mod_CAT_2.207.rds")
+} else{
+mod_CAT_2.207 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=34))
+saveRDS(mod_CAT_2.207,"Models/mod_CAT_2.207.rds")
+}
+  loo_new<-loo(mod_CAT_2.207)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.207)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.207",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.207)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female' and their interaction
+if(!"mod_CAT_2.208"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.208.rds")){
+  mod_CAT_2.208<-readRDS("Models/mod_CAT_2.208.rds")
+} else{
+mod_CAT_2.208 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_2 - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=35))
+saveRDS(mod_CAT_2.208,"Models/mod_CAT_2.208.rds")
+}
+  loo_new<-loo(mod_CAT_2.208)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.208)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.208",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.208)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at lin 'female' and their interaction
+if(!"mod_CAT_2.209"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.209.rds")){
+  mod_CAT_2.209<-readRDS("Models/mod_CAT_2.209.rds")
+} else{
+mod_CAT_2.209 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_1 - redYN:quantile_low_up_1 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=36))
+saveRDS(mod_CAT_2.209,"Models/mod_CAT_2.209.rds")
+}
+  loo_new<-loo(mod_CAT_2.209)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.209)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.209",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.209)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including categorical illuminance at heu 'female', categorical illuminance at lin 'female' and their interaction
+if(!"mod_CAT_2.210"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.210.rds")){
+  mod_CAT_2.210<-readRDS("Models/mod_CAT_2.210.rds")
+} else{
+mod_CAT_2.210 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=37))
+saveRDS(mod_CAT_2.210,"Models/mod_CAT_2.210.rds")
+}
+  loo_new<-loo(mod_CAT_2.210)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.210)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.210",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.210)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between redYN and categorical illuminance at heu 'female'
+if(!"mod_CAT_2.211"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.211.rds")){
+  mod_CAT_2.211<-readRDS("Models/mod_CAT_2.211.rds")
+} else{
+mod_CAT_2.211 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_2 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=38))
+saveRDS(mod_CAT_2.211,"Models/mod_CAT_2.211.rds")
+}
+  loo_new<-loo(mod_CAT_2.211)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.211)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.211",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.211)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between redYN and categorical illuminance at lin 'female'
+if(!"mod_CAT_2.212"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.212.rds")){
+  mod_CAT_2.212<-readRDS("Models/mod_CAT_2.212.rds")
+} else{
+mod_CAT_2.212 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_1 - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=39))
+saveRDS(mod_CAT_2.212,"Models/mod_CAT_2.212.rds")
+}
+  loo_new<-loo(mod_CAT_2.212)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.212)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.212",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.212)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_2.213"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.213.rds")){
+  mod_CAT_2.213<-readRDS("Models/mod_CAT_2.213.rds")
+} else{
+mod_CAT_2.213 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_1 - redYN:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=40))
+saveRDS(mod_CAT_2.213,"Models/mod_CAT_2.213.rds")
+}
+  loo_new<-loo(mod_CAT_2.213)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.213)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.213",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.213)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between redYN and categorical illuminance at heu 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_2.214"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.214.rds")){
+  mod_CAT_2.214<-readRDS("Models/mod_CAT_2.214.rds")
+} else{
+mod_CAT_2.214 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=41))
+saveRDS(mod_CAT_2.214,"Models/mod_CAT_2.214.rds")
+}
+  loo_new<-loo(mod_CAT_2.214)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.214)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.214",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.214)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between redYN and categorical illuminance at lin 'female' and the interaction between the two categorical illuminance measures
+if(!"mod_CAT_2.215"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.215.rds")){
+  mod_CAT_2.215<-readRDS("Models/mod_CAT_2.215.rds")
+} else{
+mod_CAT_2.215 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_1 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=42))
+saveRDS(mod_CAT_2.215,"Models/mod_CAT_2.215.rds")
+}
+  loo_new<-loo(mod_CAT_2.215)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.215)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.215",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.215)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female', the interaction between redYN and categorical illuminance at heu 'female' and the interaction between redYN and categorical illuminance at lin 'female'
+if(!"mod_CAT_2.216"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.216.rds")){
+  mod_CAT_2.216<-readRDS("Models/mod_CAT_2.216.rds")
+} else{
+mod_CAT_2.216 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - quantile_low_up_1:quantile_low_up_2 - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=43))
+saveRDS(mod_CAT_2.216,"Models/mod_CAT_2.216.rds")
+}
+  loo_new<-loo(mod_CAT_2.216)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.216)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.216",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.216)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+#The model including redYN, categorical illuminance at heu 'female', categorical illuminance at lin 'female' and all two-way interactions
+if(!"mod_CAT_2.217"%in%IC_table$Model){
+if(file.exists("Models/mod_CAT_2.217.rds")){
+  mod_CAT_2.217<-readRDS("Models/mod_CAT_2.217.rds")
+} else{
+mod_CAT_2.217 <- suppressMessages(update(mod_CAT_2.2_red, formula. =  ~ . - redYN:quantile_low_up_1:quantile_low_up_2,refresh=0,silent = TRUE,seed=44))
+saveRDS(mod_CAT_2.217,"Models/mod_CAT_2.217.rds")
+}
+  loo_new<-loo(mod_CAT_2.217)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.217)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.217",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+rm(mod_CAT_2.217)
+invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+```
+
+now, we calculate WAIC and LOOIC of the full model.
+```{r}
+if(!"mod_CAT_2.2_red"%in%IC_table$Model){
+  loo_new<-loo(mod_CAT_2.2_red)$estimates[3,1]
+  waic_new<-waic(mod_CAT_2.2_red)$estimates[3,1]
+  IC_table<-rbind(IC_table,data.frame(Model="mod_CAT_2.2_red",LOOIC=loo_new,WAIC=waic_new,stringsAsFactors = F))
+  rm(mod_CAT_2.2_red)
+  invisible(gc())
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+}
+```
+
+Model weights
+```{r}
+ic_diffs <- IC_table$WAIC - min(IC_table$WAIC)
+out <- exp(-ic_diffs / 2)
+out <- as.numeric(out)
+out <- out / sum(out)
+```
+
+We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate WAIC differences between best fitting model and the other models. We then sort this table by WAIC value and view it. We directly save the table.
+```{r rows.print=19}
+IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
+IC_table<-IC_table[order(IC_table$WAIC),]
+cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
+```
+
+Things are a little bit less clear than before here. What we definitely see is that the categorical model including male genotype, categorical brightness score and their interaction has by far the best fit. Two of the other models including this interaction term are high up in the ranking. However, the previous best fit (with the continuous data), i.e. the model including the three-way interaction, has quite a bad fit here, as do two other models including the interaction between genotype and brightness category. Since the best fitting categorical model (i.e. `mod_CAT_2.208`{.R}) is directly comparable to the best fitting model for the pure males, we decided to use it for the Gardner-Altman plots below. However, for all the non-Gardner-Altman plots and all other analyses here, we'll focus on the best-fitting model for the continuous data.
+
+We run best fitting categorical model on the full dataset. For the continuous data, we already have the best-fitting model fitted to the full dataset, i.e. `mod2.2`{.R}.
+```{r}
+if(file.exists("Models/mod2.208_cat.rds")){
+  mod2.208_cat<-readRDS("Models/mod2.208_cat.rds")
+} else{
+mod2.208_cat<-suppressMessages(brm(court_lin_heu_01~redYN*quantile_low_up_1+(1|ID)+(1|date_trial)+(1|broods),
                                 prior=c(set_prior("normal(0,3)",class="b",coef="redYN1"),
                                         set_prior("normal(0,3)",class="Intercept")),
-                                family="bernoulli",data=pref_stat_BC[pref_stat_BC$quantile_low_up_1!="qNA"&pref_stat_BC$quantile_low_up_2!="qNA",],chains=5,
-                                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=26,
+                                family="bernoulli",data=pref_stat_BC,chains=5,
+                                iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=35,
                                 control = list(adapt_delta = 0.99)))
+saveRDS(mod2.208_cat,"Models/mod2.208_cat.rds")
+}
 ```
 
 We return back to the main model.
-
-
 
 From here on, we repeat again almost the exact same steps as for the pure taxa, which is why they will be commented on less extensively.
 
@@ -1024,7 +2418,7 @@ Now, let's look at the **simple** slopes of the interaction terms between `redYN
 
 We use the `emtrends`{.R} function again.
 ```{r}
-group_est_main_BC_interact<-suppressWarnings(suppressMessages(emtrends(mod2.2, ~ redYN, var="log_light_HC.z",transform="response")))
+group_est_main_BC_interact<-suppressWarnings(suppressMessages(emtrends(mod2.2, ~ redYN, var="log_light_HC",transform="response")))
 ```
 
 Mean and 95% equal-tailed interval.
@@ -1055,7 +2449,7 @@ We repeat the same analyses with same null hypotheses on the interaction term be
 
 `emtrends`{.R}:
 ```{r}
-group_est_main_BC_interact<-suppressWarnings(suppressMessages(emtrends(mod2.2, ~ redYN, var="log_light_TLC.z",transform="response")))
+group_est_main_BC_interact<-suppressWarnings(suppressMessages(emtrends(mod2.2, ~ redYN, var="log_light_TLC",transform="response")))
 ```
 
 Mean and 95% equal-tailed interval.
@@ -1078,11 +2472,11 @@ print(data.frame(test=c("Y > N","Y > 0","N < 0"),
 
 We can see that there is not much evidence for intensity at the *lin* 'female' affecting preference of males with red wing colour (termed `Y`{.R}). Males without red on the wings though seem to get more attracted to the *heu* 'female' if the *lin* 'female' is bright. The hypothesis of a negative slope is not met and both, posterior probability and Bayes factor show how unlikely a negative slope is. This positive slope of males without red causes also that there is little posterior probability for the slope of red males being bigger (in a sense of "more positive") than the slope of non-red males (in fact, it seems to be the other way around).
 
-We repeat a similar procedure with the categorical illuminace model, `mod2.2_cat`{.R}.
+We repeat a similar procedure with the categorical illuminace model, `mod2.208_cat`{.R}.
 
-Extract the posteriors for all levels of redYN from the categorical model, under varying categorical illumination at *heu* and at the *lin* model.
+Extract the posteriors for all levels of redYN from the categorical model, under varying categorical illumination at *heu* mounted female.
 ```{r}
-group_est_cat_BC<-suppressWarnings(suppressMessages(emmeans(mod2.2_cat, ~redYN|quantile_low_up_1|quantile_low_up_2, transform="response")))
+group_est_cat_BC<-suppressWarnings(suppressMessages(emmeans(mod2.208_cat, ~redYN|quantile_low_up_1, transform="response")))
 ```
 
 We extract the posteriors.
@@ -1090,58 +2484,46 @@ We extract the posteriors.
 group_posteriors_cat<-extract_emm_posterior(group_est_cat_BC)
 ```
 
-Split posteriors by redYN and illuminance categories at each models
+Split posteriors by redYN and illuminance categories at the *heu* female.
 ```{r}
-non_red_posterior_cat_1_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q1"&group_posteriors_cat$quantile_low_up_2=="q1"]
-red_posterior_cat_1_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q1"&group_posteriors_cat$quantile_low_up_2=="q1"]
-non_red_posterior_cat_1_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q1"&group_posteriors_cat$quantile_low_up_2=="q2"]
-red_posterior_cat_1_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q1"&group_posteriors_cat$quantile_low_up_2=="q2"]
-non_red_posterior_cat_2_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q2"&group_posteriors_cat$quantile_low_up_2=="q1"]
-red_posterior_cat_2_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q2"&group_posteriors_cat$quantile_low_up_2=="q1"]
-non_red_posterior_cat_2_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q2"&group_posteriors_cat$quantile_low_up_2=="q2"]
-red_posterior_cat_2_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q2"&group_posteriors_cat$quantile_low_up_2=="q2"]
+non_red_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q1"]
+red_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q1"]
+non_red_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q2"]
+red_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors"
 ```{r}
-difference_posterior_cat_1_1<-red_posterior_cat_1_1-non_red_posterior_cat_1_1
-difference_posterior_cat_1_2<-red_posterior_cat_1_2-non_red_posterior_cat_1_2
-difference_posterior_cat_2_1<-red_posterior_cat_2_1-non_red_posterior_cat_2_1
-difference_posterior_cat_2_2<-red_posterior_cat_2_2-non_red_posterior_cat_2_2
+difference_posterior_BC_cat_1<-red_posterior_cat_1-non_red_posterior_cat_1
+difference_posterior_BC_cat_2<-red_posterior_cat_2-non_red_posterior_cat_2
 ```
 
-Now we take a look at mean and 95% CrI for non-red backcrosses, red backcrosses and the difference between them. To not have too many lines, we skip pats of the previously used code by using `extract_emm_cri`{.R} instead. 
+Now we take a look at mean and 95% CrI for non-red backcrosses, red backcrosses and the difference between them. To not have too many lines, we skip parts of the previously used code by using `extract_emm_cri`{.R} instead. 
 ```{r}
 est_types<-extract_emm_cri(group_est_cat_BC)
-names(est_types)<-c("object","light_env_heu","light_env_lin","mean","lower","upper")
-contrast_table<-unname(data.frame(rep("Y-N",4),est_types[c(1,3,5,7),2:3],rbind(c(mean(difference_posterior_cat_1_1),quantile(difference_posterior_cat_1_1,probs=c(0.025,0.975))),c(mean(difference_posterior_cat_2_1),quantile(difference_posterior_cat_2_1,probs=c(0.025,0.975))),c(mean(difference_posterior_cat_1_2),quantile(difference_posterior_cat_1_2,probs=c(0.025,0.975))),c(mean(difference_posterior_cat_2_2),quantile(difference_posterior_cat_2_2,probs=c(0.025,0.975)))),stringsAsFactors=F))
-names(contrast_table)<-c("object","light_env_heu","light_env_lin","mean","lower","upper")
-est_types<-rbind(est_types[1:2,],contrast_table[1,],est_types[3:4,],contrast_table[2,],est_types[5:6,],contrast_table[3,],est_types[7:8,],contrast_table[4,])
+names(est_types)<-c("object","light_env_heu","mean","lower","upper")
+contrast_table<-unname(data.frame(rep("Y-N",2),c("q1","q2"),rbind(c(mean(difference_posterior_BC_cat_1),quantile(difference_posterior_BC_cat_1,probs=c(0.025,0.975))),c(mean(difference_posterior_BC_cat_2),quantile(difference_posterior_BC_cat_2,probs=c(0.025,0.975)))),stringsAsFactors=F))
+names(contrast_table)<-c("object","light_env_heu","mean","lower","upper")
+est_types<-rbind(est_types[1:2,],contrast_table[1,],est_types[3:4,],contrast_table[2,])
 rownames(est_types)<-NULL
 print(est_types)
 ```
 
-Looks pretty similar to the continuous model! Only the effect of illuminance at the *lin* model seems to be not as strong.
+Looks pretty similar to the continuous model! (Only the effect of illuminance at the *lin* model is lacking).
 
 Some of these calculations will be repeated by the below code to produce the plots. 
 
 ### Figure 2
 
-Get `emmeans`{.R} estimates for the interaction between log-illuminance around *heu* 'female' and type (species) from `mod1.208`{.R}. We sample at 100 values distributes across the range of illuminance values.
+Get `emmeans`{.R} estimates for the interaction between log-illuminance around *heu* 'female' and type (species) from `mod1.208_final`{.R}. We sample at 100 values distributed across the range of illuminance values.
 ```{r}
 #We find the range of illuminance intensities at heu mounted female
-data_range<-range(mod1.208$data$log_light_HC.z)
+data_range<-range(mod1.208_final$data$log_light_HC)
 #We produce 100 values from the range between the two extremes
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
 #Run emmeans
-pure_interaction<-extract_emm_cri(emmeans(mod1.208, ~type|log_light_HC.z, transform="response",at=list(log_light_HC.z=val_to_check)))
+pure_interaction<-extract_emm_cri(emmeans(mod1.208_final, ~type|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))
 ```
-
-We backtransform every value of `log_light_HC.z`{.R}, using the scaling parameters safed in the original table.
-```{r}
-pure_interaction$log_light_HC<-pure_interaction$log_light_HC.z*attr(pref_stat_TLC_HC$log_light_HC.z,'scaled:scale')+attr(pref_stat_TLC_HC$log_light_HC.z,'scaled:center')
-```
-
 
 Create histogram of the difference posteriors in the Gardner-Altman plots. We take a BIN size of 0.005.
 ```{r}
@@ -1237,7 +2619,7 @@ post_hist_cat_2$counts<-(post_hist_cat_2$counts/max_bar)*(par("cex")*1.4*par("ci
 add_gardner_altman(TLC_posterior_main,HC_posterior_main,difference_posterior_main,post_hist_main)
 
 #We add the same type of swarm plot, but this time just including data from dark conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$quantile_low_up=="q1",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,pref_stat_TLC_HC$quantile_low_up_1=="q1"),],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -1296,7 +2678,7 @@ add_gardner_altman(TLC_posterior_cat_1,HC_posterior_cat_1,difference_posterior_c
 
 
 #We add the same type of swarm plot, but this time just including data from bright conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$quantile_low_up=="q2",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,pref_stat_TLC_HC$quantile_low_up_1=="q2"),],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -1363,7 +2745,7 @@ invisible(dev.off())
 We convert the pdf to png, so we have both file types at hand later.
 Unfortunately, the Greek Delta sign gets lost in this process... It is there though in the pdf.
 ```{r}
-pdf_convert("Graphs/figure2.pdf",filenames="Graphs/figure2.png",dpi=300)
+invisible(pdf_convert("Graphs/figure2.pdf",filenames="Graphs/figure2.png",dpi=300,verbose=F))
 ```
 
 Show png we just made
@@ -1372,6 +2754,231 @@ fig2<-readPNG("Graphs/figure2.png")
 grid.raster(fig2)
 ```
 
+### Supplementary Figure 2
+
+In this figure, we visualize our results from "manually" scoring video footage of the broad light environment classes inside our experimental cage during behavioural interactions. We first show a sketch of the broad light environments (the PNG image we load will not be provide online), then we show the measurements of the light logger at the *heu* model under these light environment classes and finally we show how male visual attraction behaviour differs in these three classes.
+
+First we create again "difference posteriors" for Gardner-Altman plots.
+```{r}
+post_hist_class_1<-hist(difference_posterior_light_class_1,breaks=seq(floor(200*min(difference_posterior_light_class_1))/200,
+                                                          ceiling(200*max(difference_posterior_light_class_1))/200,0.005),plot=F)
+post_hist_class_2<-hist(difference_posterior_light_class_2,breaks=seq(floor(200*min(difference_posterior_light_class_2))/200,
+                                                            ceiling(200*max(difference_posterior_light_class_2))/200,0.005),plot=F)
+post_hist_class_3<-hist(difference_posterior_light_class_3,breaks=seq(floor(200*min(difference_posterior_light_class_3))/200,
+                                                               ceiling(200*max(difference_posterior_light_class_3))/200,0.005),plot=F)
+```
+
+Then comes the plot.
+```{r}
+png("Graphs/supplementary_figure2.png",height=4000,width=4500,res=300)
+
+#Read in PNG of sketch
+envir<-readPNG("environments.png")
+
+layout(matrix(c(1,1,1,2,2,2,3,4,5),ncol=3,byrow=T))
+par(oma=c(0,4,0,0))
+
+#Plot sketch
+par(mar=c(0,0,0,0))
+plot.new()
+rasterImage(envir,xleft=-0.04,ybottom=-0.04,xright=1.04,ytop=1.04)
+
+text(par("usr")[1]+(0.4/par("pin")[1])*diff(par("usr")[1:2]),
+     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
+     "A",font=2,cex=3,
+     pos=2,offset=0)
+
+#Plot beeswarm of illuminance logger measurements from the three classes.
+par(mar=c(2,0,2,0))
+beeswarm(pref_stat_TLC_HC$log_light_HC~factor(pref_stat_TLC_HC$light_class_HC,levels=c("sunny","cloudy","sunny_but_treeshade")),
+         cex=0.55,xaxt="n",yaxt="n",xlab="",ylab="",pch=21,xaxs="i")
+#Add corrected measurements next to the woodland shade category
+beeswarm(pref_stat_TLC_HC$log_light_HC_corrected[pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"],
+         cex=0.55,xaxt="n",yaxt="n",xlab="",ylab="",pch=21,at=3.18,col=adjustcolor("lightblue",0.7),add=T)
+#Axes and title
+axis(1,at=c(1,1.5,2,3),c("sunny","'open/cloudy'","cloudy","woodland shade"),lwd=0,line=0.2,cex.axis=2.5)
+par(xpd=NA)
+arrows(c(1.3,1.7),par("usr")[3]-0.05*diff(par("usr")[3:4]),
+       c(1.16,1.84),par("usr")[3]-0.05*diff(par("usr")[3:4]),length=0.13,lwd=1.4)
+par(xpd=F)
+axis(2,at=log10(c(2,5,15,50,150)*1000),paste0(c(2,5,15,50,150),"k"),las=2,lwd=0,line=-0.5)
+axis(2,at=log10(c(2,5,15,50,150)*1000),labels=F,tck=-0.015)
+mtext(substitute(paste("Illuminance at mounted ",italic('H. heurippa')," female [",italic('lux'),"]")),
+      2,line=2.45)
+
+text(par("usr")[1]+(0.4/par("pin")[1])*diff(par("usr")[1:2]),
+     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
+     "B",font=2,cex=3,
+     pos=2,offset=0)
+
+#We add the same type of swarm plot as before, but this time just including data from the sun-exposed heu model light class
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="sunny"),],
+                                     # The data set
+                                     sum_by_col_plot=c("ID"),
+                                     # Sum by ID for plot
+                                     response_col="court_lin_heu_01",
+                                     # Response variable
+                                     sub1_col="type",
+                                     # First fixed effect in model on heu and lin
+                                     sub1_states=c("TLC","HC"),
+                                     # Panels from left right
+                                     stats_for_1sub=F,
+                                     #Aesthetics:
+                                     par_mar=c(2.6,7.4,2,8.5),
+                                     # Plot margins
+                                     sub1_labels=c("H. t. linaresi","H. heurippa"),
+                                     # x axis labels
+                                     yaxs_label="",
+                                     # y axis title
+                                     y_tck=-0.015,
+                                     # Tick size on y-axis
+                                     horiz_0.5=F,
+                                     # No horizontal line at 0.5
+                                     panel_dividers=F,
+                                     # No vertical panel dividers
+                                     dot_size=0.45,
+                                     # Factor to multiply dot sizes with (just aesthetics)
+                                     dot_colours=list("blue","red"),
+                                     # Dot colours
+                                     sub_box_yn=F,
+                                     # No Boxplot added
+                                     numb_iterations=1000,
+                                     # Number iterations for assembling the points
+                                     legend_dots=c(),
+                                     # Legend dots
+                                     border_space=0.49,
+                                     # space to left and right side of center that dots can be jittered to
+                                     seedi=123,
+                                     # Seed
+                                     verbose=F
+                                     # Do not print comments
+)
+
+par(xpd=NA)
+text(par("usr")[1]-(0.6/par("pin")[1])*diff(par("usr")[1:2]),
+     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
+     "C",font=2,cex=3,
+     pos=2,offset=0)
+par(xpd=F)
+
+#Scale all histograms so that length of the maximum bar of all posteriors is maximally 7/9 of the distance the axis has to the plot
+max_bar<-max(c(post_hist_class_1$counts,post_hist_class_2$counts,post_hist_class_3$counts))
+post_hist_class_1$counts<-(post_hist_class_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_class_2$counts<-(post_hist_class_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_class_3$counts<-(post_hist_class_3$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+
+#We add the Gardner-Altman part for that panel
+add_gardner_altman(TLC_posterior_light_class_1,HC_posterior_light_class_1,difference_posterior_light_class_1,post_hist_class_1)
+
+#Add title
+mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
+      2,line=9.9)
+
+#We add the same type of swarm plot, but this time just including data from the heu model under cloudy light class
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="cloudy"),],
+                                     # The data set
+                                     sum_by_col_plot=c("ID"),
+                                     # Sum by ID for plot
+                                     response_col="court_lin_heu_01",
+                                     # Response variable
+                                     sub1_col="type",
+                                     # First fixed effect in model on heu and lin
+                                     sub1_states=c("TLC","HC"),
+                                     # Panels from left right
+                                     stats_for_1sub=F,
+                                     #Aesthetics:
+                                     par_mar=c(2.6,6.9,2,9),
+                                     # Plot margins
+                                     sub1_labels=c("H. t. linaresi","H. heurippa"),
+                                     # x axis labels
+                                     yaxs_label="",
+                                     # y axis title
+                                     y_tck=-0.015,
+                                     # Tick size on y-axis
+                                     horiz_0.5=F,
+                                     # No horizontal line at 0.5
+                                     panel_dividers=F,
+                                     # No vertical panel dividers
+                                     dot_size=0.45,
+                                     # Factor to multiply dot sizes with (just aesthetics)
+                                     dot_colours=list("blue","red"),
+                                     # Dot colours
+                                     sub_box_yn=F,
+                                     # No Boxplot added
+                                     numb_iterations=1000,
+                                     # Number iterations for assembling the points
+                                     legend_dots=c(),
+                                     # Legend dots
+                                     border_space=0.49,
+                                     # space to left and right side of center that dots can be jittered to
+                                     seedi=123,
+                                     # Seed
+                                     verbose=F
+                                     # Do not print comments
+)
+
+#We add the Gardner-Altman part for that panel
+add_gardner_altman(TLC_posterior_light_class_2,HC_posterior_light_class_2,difference_posterior_light_class_2,post_hist_class_2)
+
+#We add the same type of swarm plot, but this time just including data from the heu model under woodland shade light class
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"),],
+                                     # The data set
+                                     sum_by_col_plot=c("ID"),
+                                     # Sum by ID for plot
+                                     response_col="court_lin_heu_01",
+                                     # Response variable
+                                     sub1_col="type",
+                                     # First fixed effect in model on heu and lin
+                                     sub1_states=c("TLC","HC"),
+                                     # Panels from left right
+                                     stats_for_1sub=F,
+                                     #Aesthetics:
+                                     par_mar=c(2.6,6.4,2,9.5),
+                                     # Plot margins
+                                     sub1_labels=c("H. t. linaresi","H. heurippa"),
+                                     # x axis labels
+                                     yaxs_label="",
+                                     # y axis title
+                                     y_tck=-0.015,
+                                     # Tick size on y-axis
+                                     horiz_0.5=F,
+                                     # No horizontal line at 0.5
+                                     panel_dividers=F,
+                                     # No vertical panel dividers
+                                     dot_size=0.45,
+                                     # Factor to multiply dot sizes with (just aesthetics)
+                                     dot_colours=list("blue","red"),
+                                     # Dot colours
+                                     sub_box_yn=F,
+                                     # No Boxplot added
+                                     numb_iterations=1000,
+                                     # Number iterations for assembling the points
+                                     legend_dots=rev(c(5,10,20,50,100)),
+                                     # Legend dots
+                                     squeeze_legend=0.75,
+                                     # Tighten space vertically in legend
+                                     legend_info=F,
+                                     # Add no additional legend info
+                                     border_space=0.49,
+                                     # space to left and right side of center that dots can be jittered to
+                                     seedi=123,
+                                     # Seed
+                                     verbose=F
+                                     # Do not print comments
+)
+
+#We add the Gardner-Altman part for that panel
+add_gardner_altman(TLC_posterior_light_class_3,HC_posterior_light_class_3,difference_posterior_light_class_3,post_hist_class_3)
+
+#Close plotting device.
+invisible(dev.off())
+```
+
+Show PNG we just made.
+```{r}
+suppl_fig2<-readPNG("Graphs/supplementary_figure2.png")
+grid.raster(suppl_fig2)
+```
 
 ### Figure 4
 
@@ -1379,30 +2986,25 @@ Now we look at how the light environment influences visual preferences in differ
 
 Create histogram of the difference posteriors in the following Gardner-Altman plots. We take a BIN size of 0.005.
 ```{r}
-post_hist_BC_cat_1_1<-hist(difference_posterior_cat_1_1,breaks=seq(floor(200*min(difference_posterior_cat_1_1))/200,
-                                                            ceiling(200*max(difference_posterior_cat_1_1))/200,0.005),plot=F)
-post_hist_BC_cat_1_2<-hist(difference_posterior_cat_1_2,breaks=seq(floor(200*min(difference_posterior_cat_1_2))/200,
-                                                            ceiling(200*max(difference_posterior_cat_1_2))/200,0.005),plot=F)
-post_hist_BC_cat_2_1<-hist(difference_posterior_cat_2_1,breaks=seq(floor(200*min(difference_posterior_cat_2_1))/200,
-                                                            ceiling(200*max(difference_posterior_cat_2_1))/200,0.005),plot=F)
-post_hist_BC_cat_2_2<-hist(difference_posterior_cat_2_2,breaks=seq(floor(200*min(difference_posterior_cat_2_2))/200,
-                                                            ceiling(200*max(difference_posterior_cat_2_2))/200,0.005),plot=F)
-
+post_hist_BC_cat_1<-hist(difference_posterior_BC_cat_1,breaks=seq(floor(200*min(difference_posterior_BC_cat_1))/200,
+                                                            ceiling(200*max(difference_posterior_BC_cat_1))/200,0.005),plot=F)
+post_hist_BC_cat_2<-hist(difference_posterior_BC_cat_2,breaks=seq(floor(200*min(difference_posterior_BC_cat_2))/200,
+                                                            ceiling(200*max(difference_posterior_BC_cat_2))/200,0.005),plot=F)
 ```
 
 We produce the figure.
 ```{r}
-pdf("Graphs/figure4.pdf",height=7.5,width=5)
+pdf("Graphs/figure4.pdf",height=4,width=9)
 
-layout(matrix(c(rep(1,6),rep(2,5),rep(3,6),rep(4,5)),nrow=2,byrow=T))
+layout(matrix(1:2,nrow=1))
 
 #We reduce the cex parameter so that elements don't get too big
-par(cex=0.66)
+par(cex=2/3)
 
-par(oma=c(0,1.6,0,0))
+par(oma=c(0,0.9,0,4.5))
 
-#We add the same type of swarm plot, but this time just including data from dark conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1=="q1"&pref_stat_BC$quantile_low_up_2=="q1",],
+#We add the same type of swarm plot, but this time just including data from dark conditions at the heu model
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,pref_stat_BC$quantile_low_up_1=="q1"),],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -1414,7 +3016,7 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quanti
                                      # Panels from left right
                                      stats_for_1sub=F,
                                      #Aesthetics:
-                                     par_mar=c(2.6,2.4,2,8.298),
+                                     par_mar=c(2.6,2.9,2.8,5),
                                      # Plot margins
                                      sub1_labels=c("Non-Red","Red"),
                                      # x axis labels
@@ -1434,14 +3036,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quanti
                                      # No Boxplot added
                                      numb_iterations=1000,
                                      # Number iterations for assembling the points
-                                     legend_dots=rev(c(5,10,20,50,100)),
+                                     legend_dots=c(),
                                      # Legend dots
-                                     squeeze_legend=0.75,
-                                     # Tighten space vertically in legend
-                                     legend_info=F,
-                                     # Add no additional legend info
-                                     legend_omi=T,
-                                     # Use outer plot space
                                      border_space=0.49,
                                      # space to left and right side of center that dots can be jittered to
                                      seedi=123,
@@ -1452,23 +3048,21 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quanti
 
 #We add a letter to the figure for this panel
 text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
-     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
+     par("usr")[4]-(0.15/par("pin")[2])*diff(par("usr")[3:4]),
      "A",font=2,cex=1.5,
      pos=2,offset=0)
 
 #Scale all histograms so that length of the maximum bar of all posteriors is maximally 7/9 of the distance the axis has to the plot
-max_bar<-max(c(post_hist_BC_cat_1_1$counts,post_hist_BC_cat_1_2$counts,post_hist_BC_cat_2_1$counts,post_hist_BC_cat_2_2$counts))
-post_hist_BC_cat_1_1$counts<-(post_hist_BC_cat_1_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_BC_cat_1_2$counts<-(post_hist_BC_cat_1_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_BC_cat_2_1$counts<-(post_hist_BC_cat_2_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_BC_cat_2_2$counts<-(post_hist_BC_cat_2_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+max_bar<-max(c(post_hist_BC_cat_1$counts,post_hist_BC_cat_2$counts))
+post_hist_BC_cat_1$counts<-(post_hist_BC_cat_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_BC_cat_2$counts<-(post_hist_BC_cat_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_1_1,red_posterior_cat_1_1,difference_posterior_cat_1_1,post_hist_BC_cat_1_1,add_title=F)
+add_gardner_altman(non_red_posterior_cat_1,red_posterior_cat_1,difference_posterior_BC_cat_1,post_hist_BC_cat_1)
 
 
-#We add the same type of swarm plot, but this time just including data from dark heu and bright lin conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1=="q1"&pref_stat_BC$quantile_low_up_2=="q2",],
+#We add the same type of swarm plot, but this time just including data from bright heu conditions
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,pref_stat_BC$quantile_low_up_1=="q2"),],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -1480,60 +3074,7 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quanti
                                      # Panels from left right
                                      stats_for_1sub=F,
                                      #Aesthetics:
-                                     par_mar=c(2.6,2.4,2,5),
-                                     # Plot margins
-                                     sub1_labels=c("Non-Red","Red"),
-                                     # x axis labels
-                                     yaxs_label="",
-                                     # y axis title
-                                     y_tck=-0.015,
-                                     # Tick size on y-axis
-                                     horiz_0.5=F,
-                                     # No horizontal line at 0.5
-                                     panel_dividers=F,
-                                     # No vertical panel dividers
-                                     dot_size=0.26,
-                                     # Factor to multiply dot sizes with (just aesthetics)
-                                     dot_colours=list("blue","red"),
-                                     # Dot colours
-                                     sub_box_yn=F,
-                                     # No Boxplot added
-                                     numb_iterations=1000,
-                                     # Number iterations for assembling the points
-                                     legend_dots=c(),
-                                     # Add no additional legend info
-                                     border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
-                                     seedi=123,
-                                     # Seed
-                                     verbose=F
-                                     # Do not print comments
-)
-
-#We add a letter to the figure for this panel
-text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
-     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
-     "B",font=2,cex=1.5,
-     pos=2,offset=0)
-
-#We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_1_2,red_posterior_cat_1_2,difference_posterior_cat_1_2,post_hist_BC_cat_1_2)
-
-
-#We add the same type of swarm plot, but this time just including data lin and bright heu conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1=="q2"&pref_stat_BC$quantile_low_up_2=="q1",],
-                                     # The data set
-                                     sum_by_col_plot=c("ID"),
-                                     # Sum by ID for plot
-                                     response_col="court_lin_heu_01",
-                                     # Response variable
-                                     sub1_col="redYN",
-                                     # First fixed effect in model on heu and lin
-                                     sub1_states=c("N","Y"),
-                                     # Panels from left right
-                                     stats_for_1sub=F,
-                                     #Aesthetics:
-                                     par_mar=c(2.6,2.4,2,8.298),
+                                     par_mar=c(2.6,2.9,2.8,5),
                                      # Plot margins
                                      sub1_labels=c("Non-Red","Red"),
                                      # x axis labels
@@ -1571,69 +3112,15 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quanti
 
 #We add a letter to the figure for this panel
 text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
-     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
-     "C",font=2,cex=1.5,
+     par("usr")[4]-(0.15/par("pin")[2])*diff(par("usr")[3:4]),
+     "B",font=2,cex=1.5,
      pos=2,offset=0)
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_2_1,red_posterior_cat_2_1,difference_posterior_cat_2_1,post_hist_BC_cat_2_1,add_title=F)
-
-
-#We add the same type of swarm plot, but this time just including data from dark heu and bright lin conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1=="q2"&pref_stat_BC$quantile_low_up_2=="q2",],
-                                     # The data set
-                                     sum_by_col_plot=c("ID"),
-                                     # Sum by ID for plot
-                                     response_col="court_lin_heu_01",
-                                     # Response variable
-                                     sub1_col="redYN",
-                                     # First fixed effect in model on heu and lin
-                                     sub1_states=c("N","Y"),
-                                     # Panels from left right
-                                     stats_for_1sub=F,
-                                     #Aesthetics:
-                                     par_mar=c(2.6,2.4,2,5),
-                                     # Plot margins
-                                     sub1_labels=c("Non-Red","Red"),
-                                     # x axis labels
-                                     yaxs_label="",
-                                     # y axis title
-                                     y_tck=-0.015,
-                                     # Tick size on y-axis
-                                     horiz_0.5=F,
-                                     # No horizontal line at 0.5
-                                     panel_dividers=F,
-                                     # No vertical panel dividers
-                                     dot_size=0.26,
-                                     # Factor to multiply dot sizes with (just aesthetics)
-                                     dot_colours=list("blue","red"),
-                                     # Dot colours
-                                     sub_box_yn=F,
-                                     # No Boxplot added
-                                     numb_iterations=1000,
-                                     # Number iterations for assembling the points
-                                     legend_dots=c(),
-                                     # Add no additional legend info
-                                     border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
-                                     seedi=123,
-                                     # Seed
-                                     verbose=F
-                                     # Do not print comments
-)
-
-#We add a letter to the figure for this panel
-text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
-     par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
-     "D",font=2,cex=1.5,
-     pos=2,offset=0)
-
-#We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_2_2,red_posterior_cat_2_2,difference_posterior_cat_2_2,post_hist_BC_cat_2_2)
-
+add_gardner_altman(non_red_posterior_cat_2,red_posterior_cat_2,difference_posterior_BC_cat_2,post_hist_BC_cat_2)
 
 mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
-      2,outer=T,line=0.3,cex=0.8)
+      2,outer=T,line=-0.4,cex=0.8)
 
 #Close plotting device.
 invisible(dev.off())
@@ -1642,7 +3129,7 @@ invisible(dev.off())
 We convert the pdf to png, so we have both file types at hand later.
 Unfortunately, the Greek Delta sign gets lost in this process... It is there though in the pdf.
 ```{r}
-pdf_convert("Graphs/figure4.pdf",filenames="Graphs/figure4.png",dpi=300)
+invisible(pdf_convert("Graphs/figure4.pdf",filenames="Graphs/figure4.png",dpi=300,verbose=F))
 ```
 
 Show png we just made
@@ -1652,7 +3139,7 @@ grid.raster(fig4)
 ```
 
 
-### Supplementary figure 5
+### Supplementary figure 6
 
 Now we look at backcross to *lin* hybrids without subsetting into different light categories. We look at the model estimates from `mod2.2`{.R}.
 
@@ -1664,7 +3151,7 @@ post_hist_main_BC<-hist(difference_posterior_main_BC,breaks=seq(floor(200*min(di
 
 Produce the figure.
 ```{r}
-png("Graphs/supplementary_figure5.png",width=2000,height=1600,res=300)
+png("Graphs/supplementary_figure6.png",width=2000,height=1600,res=300)
 #Calling plot_proportion_stats to produce the panel with the full data
 testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC,
                                      # The data set
@@ -1732,12 +3219,12 @@ invisible(dev.off())
 
 Show png we just made
 ```{r}
-suppl_fig5<-readPNG("Graphs/supplementary_figure5.png")
+suppl_fig5<-readPNG("Graphs/supplementary_figure6.png")
 grid.raster(suppl_fig5)
 ```
 
 
-### Supplementary figure 4
+### Supplementary figure 5
 
 We now want to produce an overview over different hybrid crosses, and how they are affected by illuminance at the *heu* model. Also, we want to show how preferences of individuals change, therefore we'll produce so-called "reaction norm" plots.
 
@@ -1748,8 +3235,6 @@ First, create a new dataset for F1 and backcross to *heu* hybrids.
 pref_stat_other_hyb<-pref_stat[pref_stat$type%in%c("HCxTLC","TLCxHC","HCx(TLCxHC)"),]
 #We unite both types of F1 crosses
 pref_stat_other_hyb$type[pref_stat_other_hyb$type%in%c("HCxTLC","TLCxHC")]<-"F1"
-#center+scale log-illuminance
-pref_stat_other_hyb$log_light_HC.z<-scale(pref_stat_other_hyb$log_light_HC,center=T,scale=T)
 #Make relevant columns factors
 make_fact<-c("type","ID","date_trial","broods")
 for(change_fact in 1:length(make_fact)){
@@ -1759,22 +3244,28 @@ for(change_fact in 1:length(make_fact)){
 
 We create two categories for light conditions.
 ```{r}
-pref_stat_other_hyb$quantile_low_up<-as.integer(cut(pref_stat_other_hyb$log_light_HC.z, quantile(pref_stat_other_hyb$log_light_HC.z, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
-pref_stat_other_hyb$quantile_low_up<-paste0("q",pref_stat_other_hyb$quantile_low_up)
+pref_stat_other_hyb$quantile_low_up_1<-as.integer(cut(pref_stat_other_hyb$log_light_HC, quantile(pref_stat_other_hyb$log_light_HC, probs=c(0,0.5,1),na.rm = T), include.lowest=TRUE))
+pref_stat_other_hyb$quantile_low_up_1<-paste0("q",pref_stat_other_hyb$quantile_low_up_1)
+pref_stat_other_hyb$quantile_low_up_1[pref_stat_other_hyb$quantile_low_up_1=="qNA"]<-NA
 ```
 
 We run a new model for these two types.
 ```{r}
-mod_other_hyb_cat<-suppressMessages(brm(court_lin_heu_01~type*quantile_low_up+(1|ID)+(1|date_trial)+(1|broods),
+if(file.exists("Models/mod_other_hyb_cat.rds")){
+  mod_other_hyb_cat<-readRDS("Models/mod_other_hyb_cat.rds")
+} else{
+mod_other_hyb_cat<-suppressMessages(brm(court_lin_heu_01~type*quantile_low_up_1+(1|ID)+(1|date_trial)+(1|broods),
                                            prior=c(set_prior("normal(0,3)",class="b",coef="type1"),
                        set_prior("normal(0,3)",class="Intercept")),
-                             family="bernoulli",data=pref_stat_other_hyb[pref_stat_other_hyb$quantile_low_up!="qNA",],chains=5,
+                             family="bernoulli",data=pref_stat_other_hyb,chains=5,
                              iter=6000, warmup=3000,refresh=0,silent = TRUE,seed=45,control = list(adapt_delta = 0.999)))
+saveRDS(mod_other_hyb_cat,"Models/mod_other_hyb_cat.rds")
+}
 ```
 
 Extract the posteriors for all levels of type from the categorical model, under varying categorical illumination at *heu* model
 ```{r}
-other_hyb_est_cat<-suppressWarnings(suppressMessages(emmeans(mod_other_hyb_cat, ~type|quantile_low_up, transform="response")))
+other_hyb_est_cat<-suppressWarnings(suppressMessages(emmeans(mod_other_hyb_cat, ~type|quantile_low_up_1, transform="response")))
 ```
 
 We extract the posteriors.
@@ -1784,10 +3275,10 @@ other_hyb_posteriors_cat<-extract_emm_posterior(other_hyb_est_cat)
 
 Split posteriors by type and illuminance
 ```{r}
-F1_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up=="q1"]
-BC_H_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up=="q1"]
-F1_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up=="q2"]
-BC_H_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up=="q2"]
+F1_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up_1=="q1"]
+BC_H_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up_1=="q1"]
+F1_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up_1=="q2"]
+BC_H_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors" (this time, we compare **within** type, **not between** types)
@@ -1809,7 +3300,7 @@ Now we update the backcrosses to *lin*:
 
 Extract the posteriors for all levels of type from the categorical model, under varying categorical illumination at *heu* model
 ```{r}
-group_est_cat_BC_only_heu<-suppressWarnings(suppressMessages(emmeans(mod2.2_cat, ~redYN|quantile_low_up_1, transform="response")))
+group_est_cat_BC_only_heu<-suppressWarnings(suppressMessages(emmeans(mod2.208_cat, ~redYN|quantile_low_up_1, transform="response")))
 ```
 
 We extract the posteriors.
@@ -1855,7 +3346,7 @@ post_hist_within_HC<-hist(difference_posterior_within_HC,breaks=seq(floor(200*mi
 
 Produce the figure.
 ```{r}
-png("Graphs/supplementary_figure4.png",width=6500,height=1600,res=300)
+png("Graphs/supplementary_figure5.png",width=6500,height=1600,res=300)
 
 layout(matrix(1:6,ncol=6))
 
@@ -1864,13 +3355,13 @@ par(oma=c(0,1,0,5))
 #lin
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$quantile_low_up!="qNA"&pref_stat_TLC_HC$type=="TLC",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$type=="TLC",],
                                      # The data set
-                                     sum_by_col_plot=c("ID","quantile_low_up"),
+                                     sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
                                      response_col="court_lin_heu_01",
                                      # Response variable
-                                     sub2_col="quantile_low_up",
+                                     sub2_col="quantile_low_up_1",
                                      # First fixed effect in model on heu and lin
                                      sub2_states=list(c("q1","q2")),
                                      # Panels from left right
@@ -1950,7 +3441,7 @@ par(xpd=F)
 #backcross to lin, no red
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1!="qNA"&pref_stat_BC$redYN=="N",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=="N",],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -2022,7 +3513,7 @@ par(xpd=F)
 #backcross to lin, red
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$quantile_low_up_1!="qNA"&pref_stat_BC$redYN=="Y",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=="Y",],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -2094,13 +3585,13 @@ par(xpd=F)
 #F1s
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$quantile_low_up!="qNA"&pref_stat_other_hyb$type=="F1",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$type=="F1",],
                                      # The data set
-                                     sum_by_col_plot=c("ID","quantile_low_up"),
+                                     sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
                                      response_col="court_lin_heu_01",
                                      # Response variable
-                                     sub2_col="quantile_low_up",
+                                     sub2_col="quantile_low_up_1",
                                      # First fixed effect in model on heu and lin
                                      sub2_states=list(c("q1","q2")),
                                      # Panels from left right
@@ -2166,13 +3657,13 @@ par(xpd=F)
 #Now backcross to heu
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$quantile_low_up!="qNA"&pref_stat_other_hyb$type=="HCx(TLCxHC)",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$type=="HCx(TLCxHC)",],
                                      # The data set
-                                     sum_by_col_plot=c("ID","quantile_low_up"),
+                                     sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
                                      response_col="court_lin_heu_01",
                                      # Response variable
-                                     sub2_col="quantile_low_up",
+                                     sub2_col="quantile_low_up_1",
                                      # First fixed effect in model on heu and lin
                                      sub2_states=list(c("q1","q2")),
                                      # Panels from left right
@@ -2238,13 +3729,13 @@ par(xpd=F)
 #heu
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$quantile_low_up!="qNA"&pref_stat_TLC_HC$type=="HC",],
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$type=="HC",],
                                      # The data set
-                                     sum_by_col_plot=c("ID","quantile_low_up"),
+                                     sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
                                      response_col="court_lin_heu_01",
                                      # Response variable
-                                     sub2_col="quantile_low_up",
+                                     sub2_col="quantile_low_up_1",
                                      # First fixed effect in model on heu and lin
                                      sub2_states=list(c("q1","q2")),
                                      # Panels from left right
@@ -2322,12 +3813,12 @@ invisible(dev.off())
 
 Show png we just made. The resolution in this HTML is unfortunately a bit too low to see the x-axis well enough (but it's well visible in the original PNG). From left to right: *lin*, backcross to *lin* without red, backcross to *lin* with red, F1, backcross to *heu*, *heu*. Left in each panel are data from poorly lit *heu* mounted female, right are data from brightly lit *heu* mounted female.
 ```{r}
-suppl_fig4<-readPNG("Graphs/supplementary_figure4.png")
+suppl_fig4<-readPNG("Graphs/supplementary_figure5.png")
 grid.raster(suppl_fig4)
 ```
 
 
-### Supplementary figure 2
+### Supplementary figure 3
 
 We now look at all the interaction terms involving type or presence/absence of red colour in backcross hybrids, respectively. For this, we look at the fully saturated models, `mod1.2`{.R} and `mod2.2`{.R}.
 Especially displaying a three-way interaction with two continuous variables is a difficult task! Details on the code can be found in
@@ -2336,44 +3827,33 @@ Especially displaying a three-way interaction with two continuous variables is a
 First, get the two-way interaction terms between log-illuminance around 'females' and type (species) from `mod1.2`{.R} and presence/absence of red colour on backcross males from `mod2.2`{.R}.
 ```{r}
 #As before, we also first find the range of illuminance intensities at the respective female
-data_range<-range(mod1.2$data$log_light_HC.z)
+data_range<-range(mod1.2$data$log_light_HC)
 #We produce 100 values from the range between the two extremes
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
 #Run emmeans to get slopes for the effect of illuminance around heu 'female' from mod1.2
-pure_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_HC.z, transform="response",at=list(log_light_HC.z=val_to_check)))))
+pure_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))))
 
 #Repeat for effect of illuminance around lin 'female' from mod1.2
-data_range<-range(mod1.2$data$log_light_TLC.z)
+data_range<-range(mod1.2$data$log_light_TLC)
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
-pure_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_TLC.z, transform="response",at=list(log_light_TLC.z=val_to_check)))))
+pure_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_TLC, transform="response",at=list(log_light_TLC=val_to_check)))))
 
 #Repeat for effect of illuminance around heu 'female' from mod2.2
-data_range<-range(mod2.2$data$log_light_HC.z)
+data_range<-range(mod2.2$data$log_light_HC)
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
-backcross_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_HC.z, transform="response",at=list(log_light_HC.z=val_to_check)))))
+backcross_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))))
 
 #Repeat for effect of illuminance around lin 'female' from mod2.2
-data_range<-range(mod2.2$data$log_light_TLC.z)
+data_range<-range(mod2.2$data$log_light_TLC)
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
-backcross_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_TLC.z, transform="response",at=list(log_light_TLC.z=val_to_check)))))
+backcross_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_TLC, transform="response",at=list(log_light_TLC=val_to_check)))))
 ```
 
-We backtransform every value of log-illuminance, using the scaling parameters safed in the original tables.
-```{r}
-pure_interaction_heu$log_light_HC<-pure_interaction_heu$log_light_HC.z*attr(pref_stat_TLC_HC$log_light_HC.z,
-                                                                    'scaled:scale')+attr(pref_stat_TLC_HC$log_light_HC.z,'scaled:center')
-pure_interaction_lin$log_light_TLC<-pure_interaction_lin$log_light_TLC.z*attr(pref_stat_TLC_HC$log_light_TLC.z,
-                                                                    'scaled:scale')+attr(pref_stat_TLC_HC$log_light_TLC.z,'scaled:center')
-backcross_interaction_heu$log_light_HC<-backcross_interaction_heu$log_light_HC.z*attr(pref_stat_BC$log_light_HC.z,
-                                                                          'scaled:scale')+attr(pref_stat_BC$log_light_HC.z,'scaled:center')
-backcross_interaction_lin$log_light_TLC<-backcross_interaction_lin$log_light_TLC.z*attr(pref_stat_BC$log_light_TLC.z,
-                                                                          'scaled:scale')+attr(pref_stat_BC$log_light_TLC.z,'scaled:center')
-```
 
 Now the plot.
 ```{r}
 #Opening plotting device and setting up layout. 
-png("Graphs/supplementary_figure2.png",width=1280,height=2400,res=300)
+png("Graphs/supplementary_figure3.png",width=1280,height=2400,res=300)
 layout(matrix(c(rep(c(1,4),4),rep(c(2,5),4),3,6,rep(c(7,8),4),rep(c(9,10),4),11,11),byrow=T,ncol=2))
 
 par(oma=c(0,3,0,4))
@@ -2412,20 +3892,20 @@ invisible(dev.off())
 
 Show png we just made
 ```{r,fig.height=12}
-suppl_fig2<-readPNG("Graphs/supplementary_figure2.png")
+suppl_fig2<-readPNG("Graphs/supplementary_figure3.png")
 grid.raster(suppl_fig2)
 ```
 
 The dotted contours are weighted by the preference for *own*heu* female type (i.e. the more red the more weight). We can see that there is a slight tendency for a three-way interaction, meaning that the effect of a bright *heu* increasing preference for the own type is stronger, if the *lin* 'female' is not bright.
 
-### Supplementary figure 3
+### Supplementary figure 4
 
 In this figure, we take a closer look at the raw log-illuminance data and "local preferences" in the "light space". This figure should visualize were in the "illuminance space" our data is distributed in and in which regions of this space certain preferences materialize.
 
 We now plot the raw data and local preferences. As before, details can be found in `other_plot_functions.R`{.R}.
 ```{r}
 #Opening plotting device and setting up layout. 
-png("Graphs/supplementary_figure3.png",
+png("Graphs/supplementary_figure4.png",
     res=300,height = 2000,width=1270)
 layout(matrix(1:8,byrow=T,ncol=2))
 par(oma=c(1.5,4,0.05,4.3))
@@ -2476,7 +3956,7 @@ invisible(dev.off())
 
 Show png we just made
 ```{r,fig.height=12}
-suppl_fig3<-readPNG("Graphs/supplementary_figure3.png")
+suppl_fig3<-readPNG("Graphs/supplementary_figure4.png")
 grid.raster(suppl_fig3)
 ```
 
@@ -2512,7 +3992,12 @@ The model is of family Poisson, but with the divisions done later actually repre
 We use the `brms`{.R} package as a R interface for Stan.
 ```{r}
 #Model
+if(file.exists("Models/tetr_mod.rds")){
+  tetr_mod<-readRDS("Models/tetr_mod.rds")
+} else{
 tetr_mod<-suppressMessages(brm(counts~combo,data=comb_tetrad,family="poisson",chains=5, iter=300000, warmup=30000, refresh=0,silent = TRUE,seed=46))
+saveRDS(tetr_mod,"Models/tetr_mod.rds")
+}
 ```
 
 ## Posteriors
@@ -2643,7 +4128,7 @@ invisible(dev.off())
 
 We convert the pdf to png, so we have both file types. Unfortunately, the purple dot showing the estimator in the center of each CrI for the prediction derived from the mounted female data is not showing up after the conversion. It is there in the pdf though!
 ```{r}
-pdf_convert("Graphs/figure3.pdf",filenames="Graphs/figure3.png",dpi=300)
+invisible(pdf_convert("Graphs/figure3.pdf",filenames="Graphs/figure3.png",dpi=300,verbose=F))
 ```
 
 Show png we just made
