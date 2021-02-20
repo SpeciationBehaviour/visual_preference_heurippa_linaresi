@@ -3,10 +3,17 @@ title: "Light environment influences mating behaviours during the early stages o
 author: "Alexander E. Hausmann"
 date: "last edited: `r format(Sys.time(), '%d %B %Y')`"
 output: 
-  rmdformats::readthedown:
+  pdf_document:
     number_sections: true
     toc_depth: 4
     df_print: paged
+
+#Prettier, but not accepted by the journal:
+    #rmdformats::readthedown:
+    #number_sections: true
+    #toc_depth: 4
+    #df_print: paged
+
 extra_dependencies: ["xcolor","formatR"]
 ---
 
@@ -17,8 +24,14 @@ knitr::opts_knit$set(root.dir = 'C:/Users/Hausmann/Desktop/visual_preference_heu
 ```{r, include=FALSE}
 library(knitr)
 library(rmdformats)
-opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+opts_chunk$set(tidy.opts=list(width.cutoff=50),tidy=TRUE)
 ```
+
+**Authors**: Alexander E. Hausmann, Chi-Yun Kuo, Marília Freire, Nicol Rueda-M, Mauricio Linares, Carolina Pardo-Diaz, Camilo Salazar, Richard M. Merrill
+
+**Published in**: Proceedings of the Royal Society B (2021)
+
+**DOI**: doi:10.1098/rspb.2021-0157
 
 
 # Initial explantions and setup
@@ -33,14 +46,21 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
 **Note**: to a point estimate for posterior distributions, we will use (unconventionally) the **mean** here (not the median, as most people do). The reason for that is that we will perform a lot of "posterior calculus" below. For example, for the Gardner-Altman plots below, we will plot the estimators of two groups, say A and B, as well as the estimator for the difference between these two groups. Now, median(B)-median(A) does most likely not equal median(B-A). But mean(B)-mean(A) equals mean(B-A). Therefore, for all point estimators to add up to values that make sense as a whole, we have to use the mean. To describe the 95% credible interval (CrI), we will use (as quite common), the 95% equal-tailed interval. Alternatively, one could use the high density interval.
 
+Memorize GitHub directory, repository, and folder.
+```{r}
+github<-"https://raw.githubusercontent.com"
+repos<-"/SpeciationBehaviour/visual_preference_heurippa_linaresi"
+folder<-"/master/Analyses_and_Data/Skripts_called_from_Markdown"
+```
+
 Call `plot_proportion_stats.R`{.R}, which contains a function that will later be used for producing the stripchart graphs. We outsourced this function to GitHub to make this Markdown more concise.
 ```{r}
-source("https://raw.githubusercontent.com/SpeciationBehaviour/visual_preference_heurippa_linaresi/master/Analyses_and_Data/Skripts_called_from_Markdown/Plot_Proportion_Stats.R")
+source(paste0(github,repos,folder,"/Plot_Proportion_Stats.R"))
 ```
 
 Call `other_plot_functions.R`{.R} which contains functions that will be used below for plotting and which are saved in a separate script, again, to make this Mardown more concise.
 ```{r}
-source("https://raw.githubusercontent.com/SpeciationBehaviour/visual_preference_heurippa_linaresi/master/Analyses_and_Data/Skripts_called_from_Markdown/other_plot_functions.R")
+source(paste0(github,repos,folder,"/other_plot_functions.R"))
 ```
 
 To be safe, we set a seed here (but all functions requiring a random number generator should have a seed set within the function).
@@ -211,7 +231,7 @@ for(typo in 1:length(unique_types)){
   corr_data<-rbind(corr_data,c(unique_types[typo],round(pred_sub_corr,2)))
 }
 #Show results
-corr_data
+print(corr_data)
 ```
 
 We can see that the higher the preference for the *heu* 'female' of other males during a trial, the more likely it is that an individual interacts with the *heu* 'female', throughout all types of males. This may be due to:
@@ -290,8 +310,10 @@ hist_lin_resp<-hist(log10(pref_stat$light_TLC[pref_stat$court_lin_heu_01==0]),pl
 
 Scale the histograms to have the same area.
 ```{r}
-hist_heu_resp$counts<-hist_heu_resp$counts*(sum(hist_heu_light$counts)/sum(hist_heu_resp$counts))
-hist_lin_resp$counts<-hist_lin_resp$counts*(sum(hist_lin_light$counts)/sum(hist_lin_resp$counts))
+heu_resc<-(sum(hist_heu_light$counts)/sum(hist_heu_resp$counts))
+lin_resc<-(sum(hist_lin_light$counts)/sum(hist_lin_resp$counts))
+hist_heu_resp$counts<-hist_heu_resp$counts*heu_resc
+hist_lin_resp$counts<-hist_lin_resp$counts*lin_resc
 ```
 
 Plot histograms! Black for total recorded, beige for log-illuminance when responses occurred.
@@ -867,12 +889,12 @@ We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate
 ```{r rows.print=19}
 IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
-cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+print(cbind(Model=IC_table[,1],round(IC_table[,-1],2)))
 ```
 
 We can see that the six models, which include the interaction term between `type`{.R} and log-illuminance at the *heu* 'female' are the six best fitting models. If we add all their model weights up, we can see that these models have a high weight together:
 ```{r}
-round(sum(IC_table$WAIC_weight[1:6]),2)
+print(round(sum(IC_table$WAIC_weight[1:6]),2))
 ```
 
 We can see that the model with the best fit is `mod1.208`{.R}, which includes `type`{.R}, log-illuminance at *heu* 'female' and their interaction.
@@ -1218,7 +1240,7 @@ We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate
 ```{r rows.print=19}
 IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
-cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+print(cbind(Model=IC_table[,1],round(IC_table[,-1],2)))
 ```
 
 We can see that the categorical data support the same model structure as the continuous data, i.e. the model including male type, log-illuminance at the *heu* model and their interaction. Again, the best fitting models all include the interaction between male type, log-illuminance at the *heu* model; just this time, one of the six models that include this interaction is not in the "Top 6"; the full model with three-way interaction.
@@ -1247,7 +1269,8 @@ To correct for the broad light environment in which lux was recorded, we scored 
 pref_stat_TLC_HC$light_HC_corrected<-pref_stat_TLC_HC$light_HC
 check_for_blue<-pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"
 check_for_blue<-ifelse(is.na(check_for_blue),FALSE,check_for_blue)
-pref_stat_TLC_HC$light_HC_corrected[check_for_blue]<-pref_stat_TLC_HC$light_HC_corrected[check_for_blue]*0.85
+tree_corrected<-pref_stat_TLC_HC$light_HC_corrected[check_for_blue]*0.85
+pref_stat_TLC_HC$light_HC_corrected[check_for_blue]<-tree_corrected
 pref_stat_TLC_HC$log_light_HC_corrected<-log10(pref_stat_TLC_HC$light_HC_corrected)
 ```
 
@@ -1308,7 +1331,7 @@ suppressMessages(pp_check(mod1.208_final))
 
 Now let's have a quick look at the model coefficients. Annotation of `type`{.R} is numeric due to `contr.sum()`{.R} dummy coding:
 ```{r}
-fixef(mod1.208_final)[,1]
+print(fixef(mod1.208_final)[,1])
 ```
 
 Next, we want to look at model estimators (estimated marginal means) and contrasts. We use the awesome `emmeans`{.R} package to extract posteriors for estimators and contrasts.
@@ -1317,7 +1340,7 @@ For this, we first define two functions which will help handle the `emmeans`{.R}
 
 This function transforms the posteriors stored in an `emmeans`{.R} output to a more user-friendly table. This function does essentially the same as `as.mcmc.emmGrid`{.R} from `emmeans`{.R} or `gather_emmeans_draws`{.R} from the `tidybayes`{.R} package. This just produces a handier format, as we think (all values below each other with an identifier column, as in `gather_emmeans_draws`{.R}, but with 'non-tidy' format):
 ```{r}
-extract_emm_posterior<-function(emm_object){
+extract_emm_post<-function(emm_object){
   
   #Get parameter combinations
   level_comb<-expand.grid(emm_object@levels,stringsAsFactors=F)
@@ -1347,8 +1370,11 @@ extract_emm_cri<-function(emm_object,middle="mean",type0.95="eti"){
   slopes<-emm_object@post.beta%*%t(emm_object@linfct)
   #If equal-tailed interval, calculate this for posteriors of each parameter combination
   if(type0.95=="eti"){
+    it_over<-prod(lengths(emm_object@levels))
+    to_transp<-sapply(1:it_over,function(x) c(eval(parse(text=paste0(middle,"(slopes[,x])"))),
+                                              quantile(slopes[,x],probs=c(0.025,0.975))))
     summ_estimators<-data.frame(level_comb,
-                                t(sapply(1:prod(lengths(emm_object@levels)),function(x) c(eval(parse(text=paste0(middle,"(slopes[,x])"))),quantile(slopes[,x],probs=c(0.025,0.975))))))
+                                t(to_transp))
     #If not equal-tailed interval, calculate high-density interval for posteriors of each parameter combination
   } else{
     #For this, we have to load the HDInterval library (this will actually never happen in this Markdown, which is why we didn't do so in the beginning).
@@ -1357,8 +1383,11 @@ extract_emm_cri<-function(emm_object,middle="mean",type0.95="eti"){
     }
     suppressMessages(suppressWarnings(library(HDInterval)))
     
+    it_over<-prod(lengths(emm_object@levels))
+    to_transp<-sapply(1:it_over,function(x) c(eval(parse(text=paste0(middle,"(slopes[,x])"))),
+                                              hdi(slopes[,x])))
     summ_estimators<-data.frame(level_comb,
-                                t(sapply(1:prod(lengths(emm_object@levels)),function(x) c(eval(parse(text=paste0(middle,"(slopes[,x])"))),hdi(slopes[,x])))))
+                                t(to_transp))
   }
   
   #Give names to the new table and return
@@ -1375,28 +1404,28 @@ group_est_main<-suppressWarnings(suppressMessages(emmeans(mod1.208_final, ~type,
 We could call the `extract_emm_cri`{.R} function we just created; but for now, we actually also need the posteriors, so we do this manually.
 We extract the posteriors.
 ```{r}
-group_posteriors_main<-extract_emm_posterior(group_est_main)
+group_post_main<-extract_emm_post(group_est_main)
 ```
 
 Split posteriors by type
 ```{r}
-TLC_posterior_main<-group_posteriors_main$value[group_posteriors_main$type=="TLC"]
-HC_posterior_main<-group_posteriors_main$value[group_posteriors_main$type=="HC"]
+TLC_post_main<-group_post_main$value[group_post_main$type=="TLC"]
+HC_post_main<-group_post_main$value[group_post_main$type=="HC"]
 ```
 
 Create "difference posterior"
 ```{r}
-difference_posterior_main<-HC_posterior_main-TLC_posterior_main
+difference_post_main<-HC_post_main-TLC_post_main
 ```
 
 Now we take a look at mean and 95% CrI for *lin*, *heu* and the difference between them.
 ```{r}
-est_types<-data.frame(c("TLC","HC","HC-TLC"),rbind(c(mean(TLC_posterior_main),quantile(TLC_posterior_main,probs=c(0.025,0.975))),c(mean(HC_posterior_main),quantile(HC_posterior_main,probs=c(0.025,0.975))),c(mean(difference_posterior_main),quantile(difference_posterior_main,probs=c(0.025,0.975)))))
+est_types<-data.frame(c("TLC","HC","HC-TLC"),rbind(c(mean(TLC_post_main),quantile(TLC_post_main,probs=c(0.025,0.975))),c(mean(HC_post_main),quantile(HC_post_main,probs=c(0.025,0.975))),c(mean(difference_post_main),quantile(difference_post_main,probs=c(0.025,0.975)))))
 names(est_types)<-c("object","mean","lower","upper")
 print(est_types)
 ```
 
-We see an effect size of about `r round(mean(difference_posterior_main),2)`.
+We see an effect size of about `r round(mean(difference_post_main),2)`.
 
 Now we test how likely it is that the predictors for *lin* and *heu* differ. We test three hypotheses:
 
@@ -1406,7 +1435,7 @@ Now we test how likely it is that the predictors for *lin* and *heu* differ. We 
 
 While hypothesis 1) is of high interest, 2) and 3) don't matter very much. 0.5 is a meaningless "null-hypothesis", which doesn'tmake much sense when testing males with dead, mounted females. What matters is that their visual attraction diverges!
 ```{r}
-print(data.frame(test=c("HC-TLC > 0","HC > 0","TLC < 0"),posterior_prop=c(sum(difference_posterior_main>0)/length(difference_posterior_main),sum(HC_posterior_main>0.5)/length(HC_posterior_main),sum(TLC_posterior_main<0.5)/length(TLC_posterior_main))))
+print(data.frame(test=c("HC-TLC > 0","HC > 0","TLC < 0"),posterior_prop=c(sum(difference_post_main>0)/length(difference_post_main),sum(HC_post_main>0.5)/length(HC_post_main),sum(TLC_post_main<0.5)/length(TLC_post_main))))
 ```
 
 We can see that the posterior overlap of the two predictors is small! Therefore it is very probable that the preference of the two male types differ. The probability for *heu* males to have a preference for their own type (>0.5) is smaller than for *lin* males (<0.5).
@@ -1427,12 +1456,14 @@ print(extract_emm_cri(group_est_main_interact))
 
 We get the posteriors for the simple slopes
 ```{r}
-group_posteriors_main_interact<-extract_emm_posterior(group_est_main_interact)
+group_post_main_interact<-extract_emm_post(group_est_main_interact)
 ```
 
 We get a difference posterior for the slopes.
 ```{r}
-difference_posterior_slopes<-group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]-group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]
+slope_HC<-group_post_main_interact$value[group_post_main_interact$type=="HC"]
+slope_TLC<-group_post_main_interact$value[group_post_main_interact$type=="TLC"]
+difference_post_slopes<-slope_HC-slope_TLC
 ```
 
 
@@ -1442,10 +1473,12 @@ We use the same hypotheses as before. In the interaction term context, they mean
 2) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *heu* males for their own type (positive slope). 
 3) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *lin* males for their own type (negative slope).
 ```{r}
-iterations<-nrow(group_posteriors_main_interact)/2
+iterations<-nrow(group_post_main_interact)/2
+prop_HC_bigger_TLC<-sum(difference_post_slopes>0)/iterations
+prop_HC_bigger_0<-sum(slope_HC>0)/iterations
+prop_TLC_bigger_0<-sum(slope_TLC<0)/iterations
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(difference_posterior_slopes>0)/iterations,sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(prop_HC_bigger_TLC,prop_HC_bigger_0,prop_TLC_bigger_0)))
 ```
 
 We can see that with a high probability, the slopes of the two interaction terms differ. The posteriors barely overlap. The slope for *heu* males is with very high probability positive. The slope of *lin* males is negative with quite high probability, but the effect is less clear.
@@ -1459,26 +1492,26 @@ group_est_cat<-suppressWarnings(suppressMessages(emmeans(mod1.208_cat, ~type|qua
 
 We extract the posteriors.
 ```{r}
-group_posteriors_cat<-extract_emm_posterior(group_est_cat)
+group_post_cat<-extract_emm_post(group_est_cat)
 ```
 
 Split posteriors by type and illuminance
 ```{r}
-TLC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up_1=="q1"]
-HC_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up_1=="q1"]
-TLC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="TLC"&group_posteriors_cat$quantile_low_up_1=="q2"]
-HC_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$type=="HC"&group_posteriors_cat$quantile_low_up_1=="q2"]
+TLC_post_cat_1<-group_post_cat$value[group_post_cat$type=="TLC"&group_post_cat$quantile_low_up_1=="q1"]
+HC_post_cat_1<-group_post_cat$value[group_post_cat$type=="HC"&group_post_cat$quantile_low_up_1=="q1"]
+TLC_post_cat_2<-group_post_cat$value[group_post_cat$type=="TLC"&group_post_cat$quantile_low_up_1=="q2"]
+HC_post_cat_2<-group_post_cat$value[group_post_cat$type=="HC"&group_post_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors"
 ```{r}
-difference_posterior_cat_1<-HC_posterior_cat_1-TLC_posterior_cat_1
-difference_posterior_cat_2<-HC_posterior_cat_2-TLC_posterior_cat_2
+difference_post_cat_1<-HC_post_cat_1-TLC_post_cat_1
+difference_post_cat_2<-HC_post_cat_2-TLC_post_cat_2
 ```
 
 Now we take a look at mean and 95% CrI for *lin*, *heu* and the difference between them.
 ```{r}
-est_types<-data.frame(rep(c("TLC","HC","HC-TLC"),2),rep(c("dark","bright"),each=3),rbind(c(mean(TLC_posterior_cat_1),quantile(TLC_posterior_cat_1,probs=c(0.025,0.975))),c(mean(HC_posterior_cat_1),quantile(HC_posterior_cat_1,probs=c(0.025,0.975))),c(mean(difference_posterior_cat_1),quantile(difference_posterior_cat_1,probs=c(0.025,0.975))),c(mean(TLC_posterior_cat_2),quantile(TLC_posterior_cat_2,probs=c(0.025,0.975))),c(mean(HC_posterior_cat_2),quantile(HC_posterior_cat_2,probs=c(0.025,0.975))),c(mean(difference_posterior_cat_2),quantile(difference_posterior_cat_2,probs=c(0.025,0.975)))))
+est_types<-data.frame(rep(c("TLC","HC","HC-TLC"),2),rep(c("dark","bright"),each=3),rbind(c(mean(TLC_post_cat_1),quantile(TLC_post_cat_1,probs=c(0.025,0.975))),c(mean(HC_post_cat_1),quantile(HC_post_cat_1,probs=c(0.025,0.975))),c(mean(difference_post_cat_1),quantile(difference_post_cat_1,probs=c(0.025,0.975))),c(mean(TLC_post_cat_2),quantile(TLC_post_cat_2,probs=c(0.025,0.975))),c(mean(HC_post_cat_2),quantile(HC_post_cat_2,probs=c(0.025,0.975))),c(mean(difference_post_cat_2),quantile(difference_post_cat_2,probs=c(0.025,0.975)))))
 names(est_types)<-c("object","light_env_heu","mean","lower","upper")
 print(est_types)
 ```
@@ -1492,21 +1525,24 @@ The description of the following is reduced to the minimum, since it's basically
 First, we repeat what we just did for the main model, and estimate the interaction term with log-illuminance at the *heu* model.
 ```{r}
 group_est_three_way_HC<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_HC",transform="response")))
-group_posteriors_three_way_HC<-extract_emm_posterior(group_est_three_way_HC)
-iterations<-nrow(group_posteriors_three_way_HC)/2
+group_post_three_way_HC<-extract_emm_post(group_est_three_way_HC)
+iterations<-nrow(group_post_three_way_HC)/2
+HC_post<-group_post_three_way_HC$value[group_post_three_way_HC$type=="HC"]
+TLC_post<-group_post_three_way_HC$value[group_post_three_way_HC$type=="TLC"]
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="HC"]>group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="TLC"])/iterations,sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_three_way_HC$value[group_posteriors_three_way_HC$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(sum(HC_post>TLC_post)/iterations,sum(HC_post>0)/iterations,sum(TLC_post<0)/iterations)))
 ```
 
 Looks the same. Now we repeat the same for the interaction term with log-illuminance at the *lin* model. We use the same hypotheses, i.e. that more intense light on the 'female' increase preference for own female type in both male types, and that both responses are in opposite directions.
 ```{r}
 group_est_three_way_TLC<-suppressWarnings(suppressMessages(emtrends(mod1.2, ~ type, var="log_light_TLC",transform="response")))
-group_posteriors_three_way_TLC<-extract_emm_posterior(group_est_three_way_TLC)
-iterations<-nrow(group_posteriors_three_way_TLC)/2
+group_post_three_way_TLC<-extract_emm_post(group_est_three_way_TLC)
+iterations<-nrow(group_post_three_way_TLC)/2
+HC_post<-group_post_three_way_TLC$value[group_post_three_way_TLC$type=="HC"]
+TLC_post<-group_post_three_way_TLC$value[group_post_three_way_TLC$type=="TLC"]
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="HC"]>group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="TLC"])/iterations,sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_three_way_TLC$value[group_posteriors_three_way_TLC$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(sum(HC_post>TLC_post)/iterations,sum(HC_post>0)/iterations,
+                                  sum(TLC_post<0)/iterations)))
 ```
 
 We see very weak support for log-illuminance at the *lin* 'female' having much of an effect (posterior probabilities are neither close to 1, nor to 0). It's clear that light at the *lin* 'female' seems to not affect preference of either type very much.
@@ -1515,7 +1551,9 @@ Finally, we look at the "corrected" log-illuminance scores and check if the slop
 
 This gets us the 'simple slopes' from the interaction term.
 ```{r}
-group_est_main_interact_corrected<-suppressWarnings(suppressMessages(emtrends(mod1.208_corrected_final, ~ type, var="log_light_HC_corrected",transform="response")))
+#Redefine for aesthetics of Markdown
+mod_temp<-mod1.208_corrected_final
+group_est_main_interact_corrected<-suppressWarnings(suppressMessages(emtrends(mod_temp, ~ type, var="log_light_HC_corrected",transform="response")))
 ```
 
 We print the mean and 95% equal-tailed interval for these slopes.
@@ -1527,12 +1565,14 @@ It seems they are very similar to the model with uncorrected values!
 
 We get the posteriors for the simple slopes
 ```{r}
-group_posteriors_main_interact_corrected<-extract_emm_posterior(group_est_main_interact_corrected)
+group_post_main_interact_corrected<-extract_emm_post(group_est_main_interact_corrected)
 ```
 
 We get a difference posterior for the slopes.
 ```{r}
-difference_posterior_slopes_corrected<-group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]-group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]
+#Redine for Markdown aesthetics
+av_type<-group_post_main_interact_corrected$type
+difference_post_slopes_corrected<-group_post_main_interact_corrected$value[av_type=="HC"]-group_post_main_interact_corrected$value[av_type=="TLC"]
 ```
 
 First, test again the following hypothesis:
@@ -1541,19 +1581,23 @@ First, test again the following hypothesis:
 2) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *heu* males for their own type (positive slope). 
 3) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *lin* males for their own type (negative slope).
 ```{r}
-iterations<-nrow(group_posteriors_main_interact_corrected)/2
+iterations<-nrow(group_post_main_interact_corrected)/2
+HC_check<-group_post_main_interact_corrected$type=="HC"
+TLC_check<-group_post_main_interact_corrected$type=="TLC"
+slope_HC_corr<-group_post_main_interact_corrected$value[HC_check]
+slope_TLC_corr<-group_post_main_interact_corrected$value[TLC_check]
 print(data.frame(test=c("HC > TLC","HC > 0","TLC < 0"),
-                 posterior_prob=c(sum(difference_posterior_slopes_corrected>0)/iterations,sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]>0)/iterations,
-                                  sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]<0)/iterations)))
+                 posterior_prob=c(sum(difference_post_slopes_corrected>0)/iterations,sum(slope_HC_corr>0)/iterations,
+                                  sum(slope_TLC_corr<0)/iterations)))
 ```
 
 Again, with high probability, the slopes of the two interaction terms differ. 
 
 Now we test which proportion of the posteriors of the slopes from the corrected model differs from the means of the posteriors from the uncorrected model. We don't just test whether they differ, but in which direction they differ. If the correction indeed helps us to see the divergence in preferences more clearly, we expect the slope for *heu* males to be steeper and for *lin* males to be less steep in the corrected model. This will also be seen in the proportion of the difference posterior being bigger than the mean of the difference posterior without correction.
 ```{r}
-iterations<-nrow(group_posteriors_main_interact_corrected)/2
+iterations<-nrow(group_post_main_interact_corrected)/2
 print(data.frame(test=c("HC (corrected) > HC (uncorrected)","TLC (corrected) < TLC (uncorrected)","HC-TLC (corrected) > HC-TLC (uncorrected)"),
-                 posterior_prob=c(sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="HC"]>mean(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="HC"]))/iterations,sum(group_posteriors_main_interact_corrected$value[group_posteriors_main_interact_corrected$type=="TLC"]<mean(group_posteriors_main_interact$value[group_posteriors_main_interact$type=="TLC"]))/iterations,sum(difference_posterior_slopes_corrected>mean(difference_posterior_slopes))/iterations)))
+                 posterior_prob=c(sum(slope_HC_corr>mean(slope_HC))/iterations,sum(slope_TLC_corr<mean(slope_TLC))/iterations,sum(difference_post_slopes_corrected>mean(difference_post_slopes))/iterations)))
 ```
 
 Indeed, we do find a very slight 'improvement'. The slope for *heu* males is slightly steeper and for *lin* males slightly less steep, therefore the difference of the slopes is being than for the model on the uncorrected data. But the improvement is very weak.
@@ -1567,29 +1611,29 @@ group_est_light_class<-suppressWarnings(suppressMessages(emmeans(mod1.208_light_
 
 We extract the posteriors.
 ```{r}
-group_posteriors_light_class<-extract_emm_posterior(group_est_light_class)
+group_post_light_class<-extract_emm_post(group_est_light_class)
 ```
 
 Split posteriors by type and illuminance
 ```{r}
-TLC_posterior_light_class_1<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="sunny"]
-HC_posterior_light_class_1<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="sunny"]
-TLC_posterior_light_class_2<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="cloudy"]
-HC_posterior_light_class_2<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="cloudy"]
-TLC_posterior_light_class_3<-group_posteriors_light_class$value[group_posteriors_light_class$type=="TLC"&group_posteriors_light_class$light_class_HC=="sunny_but_treeshade"]
-HC_posterior_light_class_3<-group_posteriors_light_class$value[group_posteriors_light_class$type=="HC"&group_posteriors_light_class$light_class_HC=="sunny_but_treeshade"]
+TLC_post_light_class_1<-group_post_light_class$value[group_post_light_class$type=="TLC"&group_post_light_class$light_class_HC=="sunny"]
+HC_post_light_class_1<-group_post_light_class$value[group_post_light_class$type=="HC"&group_post_light_class$light_class_HC=="sunny"]
+TLC_post_light_class_2<-group_post_light_class$value[group_post_light_class$type=="TLC"&group_post_light_class$light_class_HC=="cloudy"]
+HC_post_light_class_2<-group_post_light_class$value[group_post_light_class$type=="HC"&group_post_light_class$light_class_HC=="cloudy"]
+TLC_post_light_class_3<-group_post_light_class$value[group_post_light_class$type=="TLC"&group_post_light_class$light_class_HC=="sunny_but_treeshade"]
+HC_post_light_class_3<-group_post_light_class$value[group_post_light_class$type=="HC"&group_post_light_class$light_class_HC=="sunny_but_treeshade"]
 ```
 
 Create "difference posteriors"
 ```{r}
-difference_posterior_light_class_1<-HC_posterior_light_class_1-TLC_posterior_light_class_1
-difference_posterior_light_class_2<-HC_posterior_light_class_2-TLC_posterior_light_class_2
-difference_posterior_light_class_3<-HC_posterior_light_class_3-TLC_posterior_light_class_3
+difference_post_light_class_1<-HC_post_light_class_1-TLC_post_light_class_1
+difference_post_light_class_2<-HC_post_light_class_2-TLC_post_light_class_2
+difference_post_light_class_3<-HC_post_light_class_3-TLC_post_light_class_3
 ```
 
 Now we take a look at mean and 95% CrI for *lin*, *heu* and the difference between them.
 ```{r}
-est_light_class<-data.frame(rep(c("TLC","HC","HC-TLC"),3),rep(c("sunny","cloudy","woodland shade"),each=3),rbind(c(mean(TLC_posterior_light_class_1),quantile(TLC_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_1),quantile(HC_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_1),quantile(difference_posterior_light_class_1,probs=c(0.025,0.975))),c(mean(TLC_posterior_light_class_2),quantile(TLC_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_2),quantile(HC_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_2),quantile(difference_posterior_light_class_2,probs=c(0.025,0.975))),c(mean(TLC_posterior_light_class_3),quantile(TLC_posterior_light_class_3,probs=c(0.025,0.975))),c(mean(HC_posterior_light_class_3),quantile(HC_posterior_light_class_3,probs=c(0.025,0.975))),c(mean(difference_posterior_light_class_3),quantile(difference_posterior_light_class_3,probs=c(0.025,0.975)))))
+est_light_class<-data.frame(rep(c("TLC","HC","HC-TLC"),3),rep(c("sunny","cloudy","woodland shade"),each=3),rbind(c(mean(TLC_post_light_class_1),quantile(TLC_post_light_class_1,probs=c(0.025,0.975))),c(mean(HC_post_light_class_1),quantile(HC_post_light_class_1,probs=c(0.025,0.975))),c(mean(difference_post_light_class_1),quantile(difference_post_light_class_1,probs=c(0.025,0.975))),c(mean(TLC_post_light_class_2),quantile(TLC_post_light_class_2,probs=c(0.025,0.975))),c(mean(HC_post_light_class_2),quantile(HC_post_light_class_2,probs=c(0.025,0.975))),c(mean(difference_post_light_class_2),quantile(difference_post_light_class_2,probs=c(0.025,0.975))),c(mean(TLC_post_light_class_3),quantile(TLC_post_light_class_3,probs=c(0.025,0.975))),c(mean(HC_post_light_class_3),quantile(HC_post_light_class_3,probs=c(0.025,0.975))),c(mean(difference_post_light_class_3),quantile(difference_post_light_class_3,probs=c(0.025,0.975)))))
 
 names(est_light_class)<-c("object","light_class_heu","mean","lower","upper")
 print(est_light_class)
@@ -1629,7 +1673,7 @@ suppressWarnings(summary(mod2.2_with_exp_line)$random$exp_line)
 
 ... we can also see this we extract variance and correlation components (the estimation error is very high).
 ```{r}
-VarCorr(mod2.2_with_exp_line)
+print(VarCorr(mod2.2_with_exp_line))
 ```
 
 Therefore, we remove `exp_line`{.R} from our model, but instead look separately at the different experimental lines later (see below). We create a new model without `exp_line`{.R}.
@@ -1976,12 +2020,12 @@ We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate
 ```{r rows.print=19}
 IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
-cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+print(cbind(Model=IC_table[,1],round(IC_table[,-1],2)))
 ```
 
 We can again see that the six models, which include the interaction term between `type`{.R} and log-illuminance at the *heu* 'female' are the six best fitting models. If we add all their model weights up, we see that these models have a high weight together:
 ```{r}
-round(sum(IC_table$WAIC_weight[1:6]),2)
+print(round(sum(IC_table$WAIC_weight[1:6]),2))
 ```
 
 We can see that the model with the best fit is `mod2.2_red`{.R}, which includes `type`{.R}, log-illuminance at *heu* 'female', log-illuminance at *lin* 'female' and possible interaction terms. We already generated this model structure fit to the full data set above, as `mod2.2`{.R}.
@@ -2328,7 +2372,7 @@ We summarize LOOIC, WAIC and WAIC weights in a table, and additionally calculate
 ```{r rows.print=19}
 IC_table<-data.frame(IC_table,WAIC_Diff=ic_diffs,WAIC_weight=out)
 IC_table<-IC_table[order(IC_table$WAIC),]
-cbind(Model=IC_table[,1],round(IC_table[,-1],2))
+print(cbind(Model=IC_table[,1],round(IC_table[,-1],2)))
 write.csv(IC_table,"Tables/WAIC_backcross_CAT.csv",row.names=F,quote=F)
 ```
 
@@ -2365,7 +2409,7 @@ suppressMessages(pp_check(mod2.2))
 
 Model coefficients:
 ```{r}
-fixef(mod2.2)[,1]
+print(fixef(mod2.2)[,1])
 ```
 
 
@@ -2378,28 +2422,28 @@ group_est_main_BC<-suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN, tra
 
 We extract the posteriors.
 ```{r}
-group_posteriors_main_BC<-extract_emm_posterior(group_est_main_BC)
+group_post_main_BC<-extract_emm_post(group_est_main_BC)
 ```
 
 Split posteriors by redYN
 ```{r}
-non_red_posterior_main<-group_posteriors_main_BC$value[group_posteriors_main_BC$redYN=="N"]
-red_posterior_main<-group_posteriors_main_BC$value[group_posteriors_main_BC$redYN=="Y"]
+nred_post_main<-group_post_main_BC$value[group_post_main_BC$redYN=="N"]
+red_post_main<-group_post_main_BC$value[group_post_main_BC$redYN=="Y"]
 ```
 
 Create "difference posterior"
 ```{r}
-difference_posterior_main_BC<-red_posterior_main-non_red_posterior_main
+difference_post_main_BC<-red_post_main-nred_post_main
 ```
 
 Now we take a look at mean and 95% CrI for non-red backcross, red backcross and the difference between them.
 ```{r}
-est_redYN<-data.frame(c("N","Y","Y-N"),rbind(c(mean(non_red_posterior_main),quantile(non_red_posterior_main,probs=c(0.025,0.975))),c(mean(red_posterior_main),quantile(red_posterior_main,probs=c(0.025,0.975))),c(mean(difference_posterior_main_BC),quantile(difference_posterior_main_BC,probs=c(0.025,0.975)))))
+est_redYN<-data.frame(c("N","Y","Y-N"),rbind(c(mean(nred_post_main),quantile(nred_post_main,probs=c(0.025,0.975))),c(mean(red_post_main),quantile(red_post_main,probs=c(0.025,0.975))),c(mean(difference_post_main_BC),quantile(difference_post_main_BC,probs=c(0.025,0.975)))))
 names(est_redYN)<-c("object","mean","lower","upper")
 print(est_redYN)
 ```
 
-We see an effect size of about `r round(mean(difference_posterior_main_BC),2)`.
+We see an effect size of about `r round(mean(difference_post_main_BC),2)`.
 
 Now we test how likely it is that the predictors for non-red and red backcross differ. We test three hypotheses:
 
@@ -2409,7 +2453,7 @@ Now we test how likely it is that the predictors for non-red and red backcross d
 
 Again, 2) and 3) don't matter very much.
 ```{r}
-print(data.frame(test=c("Y-N > 0","Y > 0","N < 0"),posterior_prop=c(sum(difference_posterior_main_BC>0)/length(difference_posterior_main_BC),sum(red_posterior_main>0.5)/length(red_posterior_main),sum(non_red_posterior_main<0.5)/length(non_red_posterior_main))))
+print(data.frame(test=c("Y-N > 0","Y > 0","N < 0"),posterior_prop=c(sum(difference_post_main_BC>0)/length(difference_post_main_BC),sum(red_post_main>0.5)/length(red_post_main),sum(nred_post_main<0.5)/length(nred_post_main))))
 ```
 
 We can see that the posterior overlap of the two predictors is  quite small! Therefore it is quite probable that the preference of the males with and without red differ. The probability for red males to have a preference is close to 50%, meaning that there is no evidence for them having a preference for their own type. We are more certain that males without red have a preference for their own type.
@@ -2428,7 +2472,7 @@ print(extract_emm_cri(group_est_main_BC_interact))
 
 We get the posteriors for the simple slopes
 ```{r}
-group_posteriors_main_BC_interact<-extract_emm_posterior(group_est_main_BC_interact)
+group_post_main_BC_interact<-extract_emm_post(group_est_main_BC_interact)
 ```
 
 We use the same hypotheses as before. In the interaction term context, they mean again something slightly different.
@@ -2437,10 +2481,12 @@ We use the same hypotheses as before. In the interaction term context, they mean
 2) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *heu* males for their own type (positive slope). 
 3) Increase in log-illuminance around the *heu* 'female' leads to an increase in preference of *lin* males for their own type (negative slope).
 ```{r}
-iterations<-nrow(group_posteriors_main_BC_interact)/2
+iterations<-nrow(group_post_main_BC_interact)/2
+slope_BC_Y<-group_post_main_BC_interact$value[group_post_main_BC_interact$redYN=="Y"]
+slope_BC_N<-group_post_main_BC_interact$value[group_post_main_BC_interact$redYN=="N"]
 print(data.frame(test=c("Y > N","Y > 0","N < 0"),
-                 posterior_prob=c(sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="Y"]>group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="N"])/iterations,sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="Y"]>0)/iterations,
-                                  sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="N"]<0)/iterations)))
+                 posterior_prob=c(sum(slope_BC_Y>slope_BC_N)/iterations,sum(slope_BC_Y>0)/iterations,
+                                  sum(slope_BC_N<0)/iterations)))
 ```
 
 We can see that with a high probability, the slopes of the two interaction terms differ. The posteriors almost don't overlap at all. The slope for males without red colour is with very high probability negative. The slope of males with red on the wings is positive, but the support is less strong. 
@@ -2459,15 +2505,17 @@ print(extract_emm_cri(group_est_main_BC_interact))
 
 We get the posteriors for the simple slopes
 ```{r}
-group_posteriors_main_BC_interact<-extract_emm_posterior(group_est_main_BC_interact)
+group_post_main_BC_interact<-extract_emm_post(group_est_main_BC_interact)
 ```
 
 Hypothesis testing:
 ```{r}
-iterations<-nrow(group_posteriors_main_BC_interact)/2
+iterations<-nrow(group_post_main_BC_interact)/2
+slope_BC_Y<-group_post_main_BC_interact$value[group_post_main_BC_interact$redYN=="Y"]
+slope_BC_N<-group_post_main_BC_interact$value[group_post_main_BC_interact$redYN=="N"]
 print(data.frame(test=c("Y > N","Y > 0","N < 0"),
-                 posterior_prob=c(sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="Y"]>group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="N"])/iterations,sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="Y"]>0)/iterations,
-                                  sum(group_posteriors_main_BC_interact$value[group_posteriors_main_BC_interact$redYN=="N"]<0)/iterations)))
+                 posterior_prob=c(sum(slope_BC_Y>slope_BC_N)/iterations,sum(slope_BC_Y>0)/iterations,
+                                  sum(slope_BC_N<0)/iterations)))
 ```
 
 We can see that there is not much evidence for intensity at the *lin* 'female' affecting preference of males with red wing colour (termed `Y`{.R}). Males without red on the wings though seem to get more attracted to the *heu* 'female' if the *lin* 'female' is bright. The hypothesis of a negative slope is not met and both, posterior probability and Bayes factor show how unlikely a negative slope is. This positive slope of males without red causes also that there is little posterior probability for the slope of red males being bigger (in a sense of "more positive") than the slope of non-red males (in fact, it seems to be the other way around).
@@ -2481,28 +2529,28 @@ group_est_cat_BC<-suppressWarnings(suppressMessages(emmeans(mod2.208_cat, ~redYN
 
 We extract the posteriors.
 ```{r}
-group_posteriors_cat<-extract_emm_posterior(group_est_cat_BC)
+group_post_cat<-extract_emm_post(group_est_cat_BC)
 ```
 
 Split posteriors by redYN and illuminance categories at the *heu* female.
 ```{r}
-non_red_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q1"]
-red_posterior_cat_1<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q1"]
-non_red_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="N"&group_posteriors_cat$quantile_low_up_1=="q2"]
-red_posterior_cat_2<-group_posteriors_cat$value[group_posteriors_cat$redYN=="Y"&group_posteriors_cat$quantile_low_up_1=="q2"]
+nred_post_cat_1<-group_post_cat$value[group_post_cat$redYN=="N"&group_post_cat$quantile_low_up_1=="q1"]
+red_post_cat_1<-group_post_cat$value[group_post_cat$redYN=="Y"&group_post_cat$quantile_low_up_1=="q1"]
+nred_post_cat_2<-group_post_cat$value[group_post_cat$redYN=="N"&group_post_cat$quantile_low_up_1=="q2"]
+red_post_cat_2<-group_post_cat$value[group_post_cat$redYN=="Y"&group_post_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors"
 ```{r}
-difference_posterior_BC_cat_1<-red_posterior_cat_1-non_red_posterior_cat_1
-difference_posterior_BC_cat_2<-red_posterior_cat_2-non_red_posterior_cat_2
+difference_post_BC_cat_1<-red_post_cat_1-nred_post_cat_1
+difference_post_BC_cat_2<-red_post_cat_2-nred_post_cat_2
 ```
 
 Now we take a look at mean and 95% CrI for non-red backcrosses, red backcrosses and the difference between them. To not have too many lines, we skip parts of the previously used code by using `extract_emm_cri`{.R} instead. 
 ```{r}
 est_types<-extract_emm_cri(group_est_cat_BC)
 names(est_types)<-c("object","light_env_heu","mean","lower","upper")
-contrast_table<-unname(data.frame(rep("Y-N",2),c("q1","q2"),rbind(c(mean(difference_posterior_BC_cat_1),quantile(difference_posterior_BC_cat_1,probs=c(0.025,0.975))),c(mean(difference_posterior_BC_cat_2),quantile(difference_posterior_BC_cat_2,probs=c(0.025,0.975)))),stringsAsFactors=F))
+contrast_table<-unname(data.frame(rep("Y-N",2),c("q1","q2"),rbind(c(mean(difference_post_BC_cat_1),quantile(difference_post_BC_cat_1,probs=c(0.025,0.975))),c(mean(difference_post_BC_cat_2),quantile(difference_post_BC_cat_2,probs=c(0.025,0.975)))),stringsAsFactors=F))
 names(contrast_table)<-c("object","light_env_heu","mean","lower","upper")
 est_types<-rbind(est_types[1:2,],contrast_table[1,],est_types[3:4,],contrast_table[2,])
 rownames(est_types)<-NULL
@@ -2527,12 +2575,12 @@ pure_interaction<-extract_emm_cri(emmeans(mod1.208_final, ~type|log_light_HC, tr
 
 Create histogram of the difference posteriors in the Gardner-Altman plots. We take a BIN size of 0.005.
 ```{r}
-post_hist_main<-hist(difference_posterior_main,breaks=seq(floor(200*min(difference_posterior_main))/200,
-                                                          ceiling(200*max(difference_posterior_main))/200,0.005),plot=F)
-post_hist_cat_1<-hist(difference_posterior_cat_1,breaks=seq(floor(200*min(difference_posterior_cat_1))/200,
-                                                            ceiling(200*max(difference_posterior_cat_1))/200,0.005),plot=F)
-post_hist_cat_2<-hist(difference_posterior_cat_2,breaks=seq(floor(200*min(difference_posterior_cat_2))/200,
-                                                            ceiling(200*max(difference_posterior_cat_2))/200,0.005),plot=F)
+post_hist_main<-hist(difference_post_main,breaks=seq(floor(200*min(difference_post_main))/200,
+                                                          ceiling(200*max(difference_post_main))/200,0.005),plot=F)
+post_hist_cat_1<-hist(difference_post_cat_1,breaks=seq(floor(200*min(difference_post_cat_1))/200,
+                                                            ceiling(200*max(difference_post_cat_1))/200,0.005),plot=F)
+post_hist_cat_2<-hist(difference_post_cat_2,breaks=seq(floor(200*min(difference_post_cat_2))/200,
+                                                            ceiling(200*max(difference_post_cat_2))/200,0.005),plot=F)
 ```
 
 The workflow:
@@ -2545,9 +2593,13 @@ layout(matrix(1:4,ncol=2,byrow=T))
 
 par(oma=c(0,0.8,0,4.2))
 
-#Produce panel A by just calling the following function (if you want to check aesthetic details, check the function in other_plot_functions.R). We present illuminance values as on a log scale.
+#Produce panel A by just calling the following function (if you want to check aesthetic
+#details, check the function in other_plot_functions.R). We present illuminance values
+#as on a log scale.
+title_to_add<-substitute(paste("Illuminance at mounted ",italic('H. heurippa'),
+                               " female [",italic('lux'),"]"))
 plot_interaction(covariate="log_light_HC",bay_cov1=pure_interaction,
-                 text_inner_fill="",added_title=substitute(paste("Illuminance at mounted ",italic('H. heurippa')," female [",italic('lux'),"]")),
+                 text_inner_fill="",added_title=title_to_add,
                  xvalues=c(2,5,15,50,150),par_mar1 = c(3,2.9,2,0.3))
 
 #Add line showing cutoff for dark vs bright
@@ -2595,8 +2647,9 @@ sub1_states=c("TLC","HC"),
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
-                                                                          seedi=123,
+                                     # space to left and right side of center 
+                                     # that dots can be jittered to
+                                     seedi=123,
                                      # Seed
                                      verbose=F
                                      # Do not print comments
@@ -2608,18 +2661,23 @@ text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
      "B",font=2,cex=1.5,
      pos=2,offset=0)
 
-#Scale all histograms so that length of the maximum bar of all posteriors is maximally 7/9 of the distance the axis has to the plot
+#Scale all histograms so that length of the maximum bar of all posteriors is maximally
+#7/9 of the distance the axis has to the plot
 
 max_bar<-max(c(post_hist_main$counts,post_hist_cat_1$counts,post_hist_cat_2$counts))
-post_hist_main$counts<-(post_hist_main$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_cat_1$counts<-(post_hist_cat_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_cat_2$counts<-(post_hist_cat_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+sc_fac<-(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_main$counts<-(post_hist_main$counts/max_bar)*sc_fac
+post_hist_cat_1$counts<-(post_hist_cat_1$counts/max_bar)*sc_fac
+post_hist_cat_2$counts<-(post_hist_cat_2$counts/max_bar)*sc_fac
 
 #We add the Gardner-Altman part
-add_gardner_altman(TLC_posterior_main,HC_posterior_main,difference_posterior_main,post_hist_main)
+add_gardner_altman(TLC_post_main,HC_post_main,difference_post_main,post_hist_main)
 
-#We add the same type of swarm plot, but this time just including data from dark conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,pref_stat_TLC_HC$quantile_low_up_1=="q1"),],
+#We add the same type of swarm plot, but this time just including data from 
+#dark conditions
+q_match<-ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,
+                pref_stat_TLC_HC$quantile_low_up_1=="q1")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[q_match,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -2627,7 +2685,7 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
                                      # Response variable
                                      sub1_col="type",
                                      # Fixed effect in model on heu and lin
-sub1_states=c("TLC","HC"),
+                                     sub1_states=c("TLC","HC"),
                                      # Panels from left right
                                      stats_for_1sub=F,
                                      #Aesthetics:
@@ -2660,8 +2718,9 @@ sub1_states=c("TLC","HC"),
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
-                                                                          seedi=123,
+                                     # space to left and right side of center that dots
+                                     #can be jittered to
+                                     seedi=123,
                                      # Seed
                                      verbose=F
                                      # Do not print comments
@@ -2674,11 +2733,14 @@ text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(TLC_posterior_cat_1,HC_posterior_cat_1,difference_posterior_cat_1,post_hist_cat_1)
+add_gardner_altman(TLC_post_cat_1,HC_post_cat_1,difference_post_cat_1,post_hist_cat_1)
 
 
-#We add the same type of swarm plot, but this time just including data from bright conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,pref_stat_TLC_HC$quantile_low_up_1=="q2"),],
+#We add the same type of swarm plot, but this time just including data from 
+#bright conditions
+q_match<-ifelse(is.na(pref_stat_TLC_HC$quantile_low_up_1),F,
+                pref_stat_TLC_HC$quantile_low_up_1=="q2")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[q_match,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -2686,7 +2748,7 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
                                      # Response variable
                                      sub1_col="type",
                                      # Fixed effect in model on heu and lin
-sub1_states=c("TLC","HC"),
+                                     sub1_states=c("TLC","HC"),
                                      # Panels from left right
                                      stats_for_1sub=F,
                                      #Aesthetics:
@@ -2719,8 +2781,9 @@ sub1_states=c("TLC","HC"),
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
-                                                                          seedi=123,
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
+                                     seedi=123,
                                      # Seed
                                      verbose=F
                                      # Do not print comments
@@ -2733,9 +2796,10 @@ text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(TLC_posterior_cat_2,HC_posterior_cat_2,difference_posterior_cat_2,post_hist_cat_2)
-
-mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
+add_gardner_altman(TLC_post_cat_2,HC_post_cat_2,difference_post_cat_2,post_hist_cat_2)
+y_labl<-substitute(paste("Proportion interactions with mounted  ",
+                         italic('H. heurippa')," female"))
+mtext(y_labl,
       2,outer=T,line=-0.4,cex=0.8)
 
 #Close plotting device.
@@ -2760,12 +2824,12 @@ In this figure, we visualize our results from "manually" scoring video footage o
 
 First we create again "difference posteriors" for Gardner-Altman plots.
 ```{r}
-post_hist_class_1<-hist(difference_posterior_light_class_1,breaks=seq(floor(200*min(difference_posterior_light_class_1))/200,
-                                                          ceiling(200*max(difference_posterior_light_class_1))/200,0.005),plot=F)
-post_hist_class_2<-hist(difference_posterior_light_class_2,breaks=seq(floor(200*min(difference_posterior_light_class_2))/200,
-                                                            ceiling(200*max(difference_posterior_light_class_2))/200,0.005),plot=F)
-post_hist_class_3<-hist(difference_posterior_light_class_3,breaks=seq(floor(200*min(difference_posterior_light_class_3))/200,
-                                                               ceiling(200*max(difference_posterior_light_class_3))/200,0.005),plot=F)
+post_hist_class_1<-hist(difference_post_light_class_1,breaks=seq(floor(200*min(difference_post_light_class_1))/200,
+                                                          ceiling(200*max(difference_post_light_class_1))/200,0.005),plot=F)
+post_hist_class_2<-hist(difference_post_light_class_2,breaks=seq(floor(200*min(difference_post_light_class_2))/200,
+                                                            ceiling(200*max(difference_post_light_class_2))/200,0.005),plot=F)
+post_hist_class_3<-hist(difference_post_light_class_3,breaks=seq(floor(200*min(difference_post_light_class_3))/200,
+                                                               ceiling(200*max(difference_post_light_class_3))/200,0.005),plot=F)
 ```
 
 Then comes the plot.
@@ -2790,29 +2854,39 @@ text(par("usr")[1]+(0.4/par("pin")[1])*diff(par("usr")[1:2]),
 
 #Plot beeswarm of illuminance logger measurements from the three classes.
 par(mar=c(2,0,2,0))
-beeswarm(pref_stat_TLC_HC$log_light_HC~factor(pref_stat_TLC_HC$light_class_HC,levels=c("sunny","cloudy","sunny_but_treeshade")),
+x_cats<-factor(pref_stat_TLC_HC$light_class_HC,
+               levels=c("sunny","cloudy","sunny_but_treeshade"))
+beeswarm(pref_stat_TLC_HC$log_light_HC~x_cats,
          cex=0.55,xaxt="n",yaxt="n",xlab="",ylab="",pch=21,xaxs="i")
 #Add corrected measurements next to the woodland shade category
-beeswarm(pref_stat_TLC_HC$log_light_HC_corrected[pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"],
-         cex=0.55,xaxt="n",yaxt="n",xlab="",ylab="",pch=21,at=3.18,col=adjustcolor("lightblue",0.7),add=T)
+wood_match<-pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"
+woodland<-pref_stat_TLC_HC$log_light_HC_corrected[wood_match]
+beeswarm(woodland,
+         cex=0.55,xaxt="n",yaxt="n",xlab="",ylab="",
+         pch=21,at=3.18,col=adjustcolor("lightblue",0.7),add=T)
 #Axes and title
-axis(1,at=c(1,1.5,2,3),c("sunny","'open/cloudy'","cloudy","woodland shade"),lwd=0,line=0.2,cex.axis=2.5)
+ax_names<-c("sunny","'open/cloudy'","cloudy","woodland shade")
+axis(1,at=c(1,1.5,2,3),ax_names,lwd=0,line=0.2,cex.axis=2.5)
 par(xpd=NA)
 arrows(c(1.3,1.7),par("usr")[3]-0.05*diff(par("usr")[3:4]),
        c(1.16,1.84),par("usr")[3]-0.05*diff(par("usr")[3:4]),length=0.13,lwd=1.4)
 par(xpd=F)
 axis(2,at=log10(c(2,5,15,50,150)*1000),paste0(c(2,5,15,50,150),"k"),las=2,lwd=0,line=-0.5)
 axis(2,at=log10(c(2,5,15,50,150)*1000),labels=F,tck=-0.015)
-mtext(substitute(paste("Illuminance at mounted ",italic('H. heurippa')," female [",italic('lux'),"]")),
-      2,line=2.45)
+y_labl<-substitute(paste("Illuminance at mounted ",italic('H. heurippa'),
+                         " female [",italic('lux'),"]"))
+mtext(y_labl,2,line=2.45)
 
 text(par("usr")[1]+(0.4/par("pin")[1])*diff(par("usr")[1:2]),
      par("usr")[4]-(0.25/par("pin")[2])*diff(par("usr")[3:4]),
      "B",font=2,cex=3,
      pos=2,offset=0)
 
-#We add the same type of swarm plot as before, but this time just including data from the sun-exposed heu model light class
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="sunny"),],
+#We add the same type of swarm plot as before, but this time just including data from 
+#the sun-exposed heu model light class
+l_class<-ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,
+                pref_stat_TLC_HC$light_class_HC=="sunny")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[l_class,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -2847,7 +2921,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
                                      legend_dots=c(),
                                      # Legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -2861,21 +2936,29 @@ text(par("usr")[1]-(0.6/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 par(xpd=F)
 
-#Scale all histograms so that length of the maximum bar of all posteriors is maximally 7/9 of the distance the axis has to the plot
-max_bar<-max(c(post_hist_class_1$counts,post_hist_class_2$counts,post_hist_class_3$counts))
-post_hist_class_1$counts<-(post_hist_class_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_class_2$counts<-(post_hist_class_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_class_3$counts<-(post_hist_class_3$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+#Scale all histograms so that length of the maximum bar of all posteriors is maximally
+#7/9 of the distance the axis has to the plot
+max_bar<-max(c(post_hist_class_1$counts,post_hist_class_2$counts,
+               post_hist_class_3$counts))
+sc_fac<-(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_class_1$counts<-(post_hist_class_1$counts/max_bar)*sc_fac
+post_hist_class_2$counts<-(post_hist_class_2$counts/max_bar)*sc_fac
+post_hist_class_3$counts<-(post_hist_class_3$counts/max_bar)*sc_fac
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(TLC_posterior_light_class_1,HC_posterior_light_class_1,difference_posterior_light_class_1,post_hist_class_1)
+add_gardner_altman(TLC_post_light_class_1,HC_post_light_class_1,
+                   difference_post_light_class_1,post_hist_class_1)
 
 #Add title
-mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
-      2,line=9.9)
+y_labl<-substitute(paste("Proportion interactions with mounted  ",
+                         italic('H. heurippa')," female"))
+mtext(y_labl,2,line=9.9)
 
-#We add the same type of swarm plot, but this time just including data from the heu model under cloudy light class
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="cloudy"),],
+#We add the same type of swarm plot, but this time just including data from the heu model
+#under cloudy light class
+l_class<-ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,
+                pref_stat_TLC_HC$light_class_HC=="cloudy")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[l_class,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -2910,7 +2993,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
                                      legend_dots=c(),
                                      # Legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -2918,10 +3002,14 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
 )
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(TLC_posterior_light_class_2,HC_posterior_light_class_2,difference_posterior_light_class_2,post_hist_class_2)
+add_gardner_altman(TLC_post_light_class_2,HC_post_light_class_2,
+                   difference_post_light_class_2,post_hist_class_2)
 
-#We add the same type of swarm plot, but this time just including data from the heu model under woodland shade light class
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade"),],
+#We add the same type of swarm plot, but this time just including data from the heu model
+#under woodland shade light class
+l_class<-ifelse(is.na(pref_stat_TLC_HC$light_class_HC),F,
+                pref_stat_TLC_HC$light_class_HC=="sunny_but_treeshade")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[l_class,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -2960,7 +3048,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -2968,7 +3057,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[ifelse(is.na(pr
 )
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(TLC_posterior_light_class_3,HC_posterior_light_class_3,difference_posterior_light_class_3,post_hist_class_3)
+add_gardner_altman(TLC_post_light_class_3,HC_post_light_class_3,
+                   difference_post_light_class_3,post_hist_class_3)
 
 #Close plotting device.
 invisible(dev.off())
@@ -2986,10 +3076,10 @@ Now we look at how the light environment influences visual preferences in differ
 
 Create histogram of the difference posteriors in the following Gardner-Altman plots. We take a BIN size of 0.005.
 ```{r}
-post_hist_BC_cat_1<-hist(difference_posterior_BC_cat_1,breaks=seq(floor(200*min(difference_posterior_BC_cat_1))/200,
-                                                            ceiling(200*max(difference_posterior_BC_cat_1))/200,0.005),plot=F)
-post_hist_BC_cat_2<-hist(difference_posterior_BC_cat_2,breaks=seq(floor(200*min(difference_posterior_BC_cat_2))/200,
-                                                            ceiling(200*max(difference_posterior_BC_cat_2))/200,0.005),plot=F)
+post_hist_BC_cat_1<-hist(difference_post_BC_cat_1,breaks=seq(floor(200*min(difference_post_BC_cat_1))/200,
+                                                            ceiling(200*max(difference_post_BC_cat_1))/200,0.005),plot=F)
+post_hist_BC_cat_2<-hist(difference_post_BC_cat_2,breaks=seq(floor(200*min(difference_post_BC_cat_2))/200,
+                                                            ceiling(200*max(difference_post_BC_cat_2))/200,0.005),plot=F)
 ```
 
 We produce the figure.
@@ -3003,8 +3093,11 @@ par(cex=2/3)
 
 par(oma=c(0,0.9,0,4.5))
 
-#We add the same type of swarm plot, but this time just including data from dark conditions at the heu model
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,pref_stat_BC$quantile_low_up_1=="q1"),],
+#We add the same type of swarm plot, but this time just including data from dark
+#conditions at the heu model
+q_match<-ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,
+                pref_stat_BC$quantile_low_up_1=="q1")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[q_match,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -3039,7 +3132,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_s
                                      legend_dots=c(),
                                      # Legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -3052,17 +3146,23 @@ text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
      "A",font=2,cex=1.5,
      pos=2,offset=0)
 
-#Scale all histograms so that length of the maximum bar of all posteriors is maximally 7/9 of the distance the axis has to the plot
+#Scale all histograms so that length of the maximum bar of all posteriors is maximally
+#7/9 of the distance the axis has to the plot
 max_bar<-max(c(post_hist_BC_cat_1$counts,post_hist_BC_cat_2$counts))
-post_hist_BC_cat_1$counts<-(post_hist_BC_cat_1$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_BC_cat_2$counts<-(post_hist_BC_cat_2$counts/max_bar)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+sc_fac<-(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_BC_cat_1$counts<-(post_hist_BC_cat_1$counts/max_bar)*sc_fac
+post_hist_BC_cat_2$counts<-(post_hist_BC_cat_2$counts/max_bar)*sc_fac
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_1,red_posterior_cat_1,difference_posterior_BC_cat_1,post_hist_BC_cat_1)
+add_gardner_altman(nred_post_cat_1,red_post_cat_1,
+                   difference_post_BC_cat_1,post_hist_BC_cat_1)
 
 
-#We add the same type of swarm plot, but this time just including data from bright heu conditions
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,pref_stat_BC$quantile_low_up_1=="q2"),],
+#We add the same type of swarm plot, but this time just including data from bright 
+#heu conditions
+q_match<-ifelse(is.na(pref_stat_BC$quantile_low_up_1),F,
+                pref_stat_BC$quantile_low_up_1=="q2")
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[q_match,],
                                      # The data set
                                      sum_by_col_plot=c("ID"),
                                      # Sum by ID for plot
@@ -3103,7 +3203,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[ifelse(is.na(pref_s
                                      legend_omi=T,
                                      # Use outer plot space
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -3117,10 +3218,12 @@ text(par("usr")[1]+(0.2/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part for that panel
-add_gardner_altman(non_red_posterior_cat_2,red_posterior_cat_2,difference_posterior_BC_cat_2,post_hist_BC_cat_2)
+add_gardner_altman(nred_post_cat_2,red_post_cat_2,
+                   difference_post_BC_cat_2,post_hist_BC_cat_2)
 
-mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
-      2,outer=T,line=-0.4,cex=0.8)
+y_labl<-substitute(paste("Proportion interactions with mounted  ",
+                         italic('H. heurippa')," female"))
+mtext(y_labl,2,outer=T,line=-0.4,cex=0.8)
 
 #Close plotting device.
 invisible(dev.off())
@@ -3145,14 +3248,16 @@ Now we look at backcross to *lin* hybrids without subsetting into different ligh
 
 Create histogram of the difference posterior (same as for the figure above).
 ```{r}
-post_hist_main_BC<-hist(difference_posterior_main_BC,breaks=seq(floor(200*min(difference_posterior_main_BC))/200,
-                                                          ceiling(200*max(difference_posterior_main_BC))/200,0.005),plot=F)
+post_hist_main_BC<-hist(difference_post_main_BC,breaks=seq(floor(200*min(difference_post_main_BC))/200,
+                                                          ceiling(200*max(difference_post_main_BC))/200,0.005),plot=F)
 ```
 
 Produce the figure.
 ```{r}
 png("Graphs/supplementary_figure6.png",width=2000,height=1600,res=300)
 #Calling plot_proportion_stats to produce the panel with the full data
+y_labl<-substitute(paste("Proportion interactions with mounted  ",
+                         italic('H. heurippa')," female"))
 testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC,
                                      # The data set
                                      sum_by_col_plot=c("ID"),
@@ -3169,7 +3274,7 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC,
                                      # Plot margins
                                      sub1_labels=c("Non-Red","Red"),
                                      # x axis labels
-                                     yaxs_label=substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
+                                     yaxs_label=y_labl,
                                      # y axis title
                                      y_tck=-0.015,
                                      # Tick size on y-axis
@@ -3194,7 +3299,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC,
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      seedi=123,
                                      # Seed
                                      verbose=F
@@ -3202,15 +3308,21 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC,
 )
 
 #Scale histogram
-post_hist_main_BC$counts<-(post_hist_main_BC$counts/max(post_hist_main_BC$counts))*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+sc_fac<-(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_main_BC$counts<-(post_hist_main_BC$counts/max(post_hist_main_BC$counts))*sc_fac
 
 #We add the Gardner-Altman part
-add_gardner_altman(non_red_posterior_main,red_posterior_main,difference_posterior_main_BC,post_hist_main_BC)
+add_gardner_altman(nred_post_main,red_post_main,
+                   difference_post_main_BC,post_hist_main_BC)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(2+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),2+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(2+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),2+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(2+seg_fac,mean(TLC_post_main),2+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(2+seg_fac,mean(HC_post_main),2+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 #Close plotting device.
@@ -3270,29 +3382,29 @@ other_hyb_est_cat<-suppressWarnings(suppressMessages(emmeans(mod_other_hyb_cat, 
 
 We extract the posteriors.
 ```{r}
-other_hyb_posteriors_cat<-extract_emm_posterior(other_hyb_est_cat)
+other_hyb_posts_cat<-extract_emm_post(other_hyb_est_cat)
 ```
 
 Split posteriors by type and illuminance
 ```{r}
-F1_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up_1=="q1"]
-BC_H_posterior_cat_1<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up_1=="q1"]
-F1_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="F1"&other_hyb_posteriors_cat$quantile_low_up_1=="q2"]
-BC_H_posterior_cat_2<-other_hyb_posteriors_cat$value[other_hyb_posteriors_cat$type=="HCx(TLCxHC)"&other_hyb_posteriors_cat$quantile_low_up_1=="q2"]
+F1_post_cat_1<-other_hyb_posts_cat$value[other_hyb_posts_cat$type=="F1"&other_hyb_posts_cat$quantile_low_up_1=="q1"]
+BC_H_post_cat_1<-other_hyb_posts_cat$value[other_hyb_posts_cat$type=="HCx(TLCxHC)"&other_hyb_posts_cat$quantile_low_up_1=="q1"]
+F1_post_cat_2<-other_hyb_posts_cat$value[other_hyb_posts_cat$type=="F1"&other_hyb_posts_cat$quantile_low_up_1=="q2"]
+BC_H_post_cat_2<-other_hyb_posts_cat$value[other_hyb_posts_cat$type=="HCx(TLCxHC)"&other_hyb_posts_cat$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors" (this time, we compare **within** type, **not between** types)
 ```{r}
-difference_posterior_F1<-F1_posterior_cat_2-F1_posterior_cat_1
-difference_posterior_BC_H<-BC_H_posterior_cat_2-BC_H_posterior_cat_1
+difference_post_F1<-F1_post_cat_2-F1_post_cat_1
+difference_post_BC_H<-BC_H_post_cat_2-BC_H_post_cat_1
 ```
 
 Get the histograms of the differences
 ```{r}
-post_hist_F1<-hist(difference_posterior_F1,breaks=seq(floor(200*min(difference_posterior_F1))/200,
-                                                            ceiling(200*max(difference_posterior_F1))/200,0.005),plot=F)
-post_hist_BC_H<-hist(difference_posterior_BC_H,breaks=seq(floor(200*min(difference_posterior_BC_H))/200,
-                                                            ceiling(200*max(difference_posterior_BC_H))/200,0.005),plot=F)
+post_hist_F1<-hist(difference_post_F1,breaks=seq(floor(200*min(difference_post_F1))/200,
+                                                            ceiling(200*max(difference_post_F1))/200,0.005),plot=F)
+post_hist_BC_H<-hist(difference_post_BC_H,breaks=seq(floor(200*min(difference_post_BC_H))/200,
+                                                            ceiling(200*max(difference_post_BC_H))/200,0.005),plot=F)
 ```
 
 
@@ -3305,43 +3417,43 @@ group_est_cat_BC_only_heu<-suppressWarnings(suppressMessages(emmeans(mod2.208_ca
 
 We extract the posteriors.
 ```{r}
-group_posteriors_cat_only_heu<-extract_emm_posterior(group_est_cat_BC_only_heu)
+group_post_cat_only_heu<-extract_emm_post(group_est_cat_BC_only_heu)
 ```
 
 Split posteriors by colour pattern and illuminance
 ```{r}
-non_red_posterior_cat_1_only_heu<-group_posteriors_cat_only_heu$value[group_posteriors_cat_only_heu$redYN=="N"&group_posteriors_cat_only_heu$quantile_low_up_1=="q1"]
-non_red_posterior_cat_2_only_heu<-group_posteriors_cat_only_heu$value[group_posteriors_cat_only_heu$redYN=="N"&group_posteriors_cat_only_heu$quantile_low_up_1=="q2"]
-red_posterior_cat_1_only_heu<-group_posteriors_cat_only_heu$value[group_posteriors_cat_only_heu$redYN=="Y"&group_posteriors_cat_only_heu$quantile_low_up_1=="q1"]
-red_posterior_cat_2_only_heu<-group_posteriors_cat_only_heu$value[group_posteriors_cat_only_heu$redYN=="Y"&group_posteriors_cat_only_heu$quantile_low_up_1=="q2"]
+nred_post_cat_1_only_heu<-group_post_cat_only_heu$value[group_post_cat_only_heu$redYN=="N"&group_post_cat_only_heu$quantile_low_up_1=="q1"]
+nred_post_cat_2_only_heu<-group_post_cat_only_heu$value[group_post_cat_only_heu$redYN=="N"&group_post_cat_only_heu$quantile_low_up_1=="q2"]
+red_post_cat_1_only_heu<-group_post_cat_only_heu$value[group_post_cat_only_heu$redYN=="Y"&group_post_cat_only_heu$quantile_low_up_1=="q1"]
+red_post_cat_2_only_heu<-group_post_cat_only_heu$value[group_post_cat_only_heu$redYN=="Y"&group_post_cat_only_heu$quantile_low_up_1=="q2"]
 ```
 
 Create "difference posteriors" (this time, we compare **within** type, **not between** types)
 ```{r}
-non_red_difference_posterior_only_heu<-non_red_posterior_cat_2_only_heu-non_red_posterior_cat_1_only_heu
-red_difference_posterior_only_heu<-red_posterior_cat_2_only_heu-red_posterior_cat_1_only_heu
+non_red_difference_post_only_heu<-nred_post_cat_2_only_heu-nred_post_cat_1_only_heu
+red_difference_post_only_heu<-red_post_cat_2_only_heu-red_post_cat_1_only_heu
 ```
 
 Get the histograms of the differences
 ```{r}
-post_hist_non_red_only_heu<-hist(non_red_difference_posterior_only_heu,breaks=seq(floor(200*min(non_red_difference_posterior_only_heu))/200,
-                                                      ceiling(200*max(non_red_difference_posterior_only_heu))/200,0.005),plot=F)
-post_hist_red_only_heu<-hist(red_difference_posterior_only_heu,breaks=seq(floor(200*min(red_difference_posterior_only_heu))/200,
-                                                          ceiling(200*max(red_difference_posterior_only_heu))/200,0.005),plot=F)
+post_hist_non_red_only_heu<-hist(non_red_difference_post_only_heu,breaks=seq(floor(200*min(non_red_difference_post_only_heu))/200,
+                                                      ceiling(200*max(non_red_difference_post_only_heu))/200,0.005),plot=F)
+post_hist_red_only_heu<-hist(red_difference_post_only_heu,breaks=seq(floor(200*min(red_difference_post_only_heu))/200,
+                                                          ceiling(200*max(red_difference_post_only_heu))/200,0.005),plot=F)
 ```
 
 Now we have to update histograms for *lin* and *heu*, such that they are comparing within type
 ```{r}
-difference_posterior_within_TLC<-TLC_posterior_cat_2-TLC_posterior_cat_1
-difference_posterior_within_HC<-HC_posterior_cat_2-HC_posterior_cat_1
+difference_post_within_TLC<-TLC_post_cat_2-TLC_post_cat_1
+difference_post_within_HC<-HC_post_cat_2-HC_post_cat_1
 ```
 
 New posteriors for differences
 ```{r}
-post_hist_within_TLC<-hist(difference_posterior_within_TLC,breaks=seq(floor(200*min(difference_posterior_within_TLC))/200,
-                                                                                  ceiling(200*max(difference_posterior_within_TLC))/200,0.005),plot=F)
-post_hist_within_HC<-hist(difference_posterior_within_HC,breaks=seq(floor(200*min(difference_posterior_within_HC))/200,
-                                                                      ceiling(200*max(difference_posterior_within_HC))/200,0.005),plot=F)
+post_hist_within_TLC<-hist(difference_post_within_TLC,breaks=seq(floor(200*min(difference_post_within_TLC))/200,
+                                                                                  ceiling(200*max(difference_post_within_TLC))/200,0.005),plot=F)
+post_hist_within_HC<-hist(difference_post_within_HC,breaks=seq(floor(200*min(difference_post_within_HC))/200,
+                                                                      ceiling(200*max(difference_post_within_HC))/200,0.005),plot=F)
 ```
 
 Produce the figure.
@@ -3355,7 +3467,8 @@ par(oma=c(0,1,0,5))
 #lin
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$type=="TLC",],
+TLC_t<-pref_stat_TLC_HC$type=="TLC"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[TLC_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3394,7 +3507,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_H
                                      legend_dots=c(),
                                      # No legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3421,27 +3535,35 @@ max_counts<-max(c(post_hist_within_TLC$counts,
                   post_hist_F1$counts,
                   post_hist_BC_H$counts,
                   post_hist_within_HC$counts))
-post_hist_within_TLC$counts<-(post_hist_within_TLC$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_non_red_only_heu$counts<-(post_hist_non_red_only_heu$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_red_only_heu$counts<-(post_hist_red_only_heu$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_F1$counts<-(post_hist_F1$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_BC_H$counts<-(post_hist_BC_H$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
-post_hist_within_HC$counts<-(post_hist_within_HC$counts/max_counts)*(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+sc_fac<-(par("cex")*1.4*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+post_hist_within_TLC$counts<-(post_hist_within_TLC$counts/max_counts)*sc_fac
+post_hist_non_red_only_heu$counts<-(post_hist_non_red_only_heu$counts/max_counts)*sc_fac
+post_hist_red_only_heu$counts<-(post_hist_red_only_heu$counts/max_counts)*sc_fac
+post_hist_F1$counts<-(post_hist_F1$counts/max_counts)*sc_fac
+post_hist_BC_H$counts<-(post_hist_BC_H$counts/max_counts)*sc_fac
+post_hist_within_HC$counts<-(post_hist_within_HC$counts/max_counts)*sc_fac
 
 #We add the Gardner-Altman part
-add_gardner_altman(TLC_posterior_cat_1,TLC_posterior_cat_2,difference_posterior_within_TLC,post_hist_within_TLC,at_pos=c(0.25,0.75),add_title=F)
+add_gardner_altman(TLC_post_cat_1,TLC_post_cat_2,
+                   difference_post_within_TLC,post_hist_within_TLC,
+                   at_pos=c(0.25,0.75),add_title=F)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 
 #backcross to lin, no red
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=="N",],
+BCN_t<-pref_stat_BC$redYN=="N"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[BCN_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3480,7 +3602,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=
                                      legend_dots=c(),
                                      # No legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3501,19 +3624,26 @@ text(par("usr")[1]+(0.3/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part
-add_gardner_altman(non_red_posterior_cat_1_only_heu,non_red_posterior_cat_2_only_heu,non_red_difference_posterior_only_heu,post_hist_non_red_only_heu,at_pos=c(0.25,0.75),add_title=F)
+add_gardner_altman(nred_post_cat_1_only_heu,nred_post_cat_2_only_heu,
+                   non_red_difference_post_only_heu,post_hist_non_red_only_heu,
+                   at_pos=c(0.25,0.75),add_title=F)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 
 #backcross to lin, red
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=="Y",],
+BCY_t<-pref_stat_BC$redYN=="Y"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[BCY_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3552,7 +3682,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_BC[pref_stat_BC$redYN=
                                      legend_dots=c(),
                                      # No legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3573,19 +3704,26 @@ text(par("usr")[1]+(0.3/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part
-add_gardner_altman(red_posterior_cat_1_only_heu,red_posterior_cat_2_only_heu,red_difference_posterior_only_heu,post_hist_red_only_heu,at_pos=c(0.25,0.75),add_title=F)
+add_gardner_altman(red_post_cat_1_only_heu,red_post_cat_2_only_heu,
+                   red_difference_post_only_heu,post_hist_red_only_heu,
+                   at_pos=c(0.25,0.75),add_title=F)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 
 #F1s
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$type=="F1",],
+F1_t<-pref_stat_other_hyb$type=="F1"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[F1_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3624,7 +3762,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_ot
                                      legend_dots=c(),
                                      # No legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3645,19 +3784,26 @@ text(par("usr")[1]+(0.3/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part
-add_gardner_altman(F1_posterior_cat_1,F1_posterior_cat_2,difference_posterior_F1,post_hist_F1,at_pos=c(0.25,0.75),add_title=F)
+add_gardner_altman(F1_post_cat_1,F1_post_cat_2,
+                   difference_post_F1,post_hist_F1,
+                   at_pos=c(0.25,0.75),add_title=F)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 
 #Now backcross to heu
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_other_hyb$type=="HCx(TLCxHC)",],
+BCHC_t<-pref_stat_other_hyb$type=="HCx(TLCxHC)"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[BCHC_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3696,7 +3842,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_other_hyb[pref_stat_ot
                                      legend_dots=c(),
                                      # No legend dots
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3717,19 +3864,26 @@ text(par("usr")[1]+(0.3/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part
-add_gardner_altman(BC_H_posterior_cat_1,BC_H_posterior_cat_2,difference_posterior_BC_H,post_hist_BC_H,at_pos=c(0.25,0.75),add_title=F)
+add_gardner_altman(BC_H_post_cat_1,BC_H_post_cat_2,
+                   difference_post_BC_H,post_hist_BC_H,
+                   at_pos=c(0.25,0.75),add_title=F)
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
 
 #heu
 
 #Calling plot_proportion_stats to produce the panel with the full data
-testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_HC$type=="HC",],
+HC_t<-pref_stat_TLC_HC$type=="HC"
+testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[HC_t,],
                                      # The data set
                                      sum_by_col_plot=c("ID","quantile_low_up_1"),
                                      # Sum by ID for plot
@@ -3774,7 +3928,8 @@ testout_bayes<-plot_proportion_stats(input_data=pref_stat_TLC_HC[pref_stat_TLC_H
                                      legend_info=F,
                                      # Add no additional legend info
                                      border_space=0.49,
-                                     # space to left and right side of center that dots can be jittered to
+                                     # space to left and right side of center that dots
+                                     # can be jittered to
                                      center_space_cat=0.15,
                                      #Empty space in center for reaction norm
                                      reaction_norm_col = "ID",
@@ -3795,23 +3950,29 @@ text(par("usr")[1]+(0.3/par("pin")[1])*diff(par("usr")[1:2]),
      pos=2,offset=0)
 
 #We add the Gardner-Altman part
-add_gardner_altman(HC_posterior_cat_1,HC_posterior_cat_2,difference_posterior_within_HC,post_hist_within_HC,at_pos=c(0.25,0.75))
+add_gardner_altman(HC_post_cat_1,HC_post_cat_2,
+                   difference_post_within_HC,post_hist_within_HC,
+                   at_pos=c(0.25,0.75))
 
 #We add the estimators from figure 2B onto the right side
 par(xpd=NA)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(TLC_posterior_main),lwd=3,col="blue",lend=3)
-segments(1+(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),1+(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2]),mean(HC_posterior_main),lwd=3,col="red",lend=3)
+seg_fac<-(par("cex")*1.3*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+seg_fac2<-(par("cex")*1.7*par("cin")[2]/par("pin")[1])*diff(par("usr")[1:2])
+segments(1+seg_fac,mean(TLC_post_main),1+seg_fac2,mean(TLC_post_main),
+         lwd=3,col="blue",lend=3)
+segments(1+seg_fac,mean(HC_post_main),1+seg_fac2,mean(HC_post_main),
+         lwd=3,col="red",lend=3)
 par(xpd=F)
 
-
-mtext(substitute(paste("Proportion interactions with mounted  ",italic('H. heurippa')," female")),
-      2,outer=T,line=-0.5,cex=1)
+y_labl<-substitute(paste("Proportion interactions with mounted  ",
+                         italic('H. heurippa')," female"))
+mtext(y_labl,2,outer=T,line=-0.5,cex=1)
 
 #Close plotting device.
 invisible(dev.off())
 ```
 
-Show png we just made. The resolution in this HTML is unfortunately a bit too low to see the x-axis well enough (but it's well visible in the original PNG). From left to right: *lin*, backcross to *lin* without red, backcross to *lin* with red, F1, backcross to *heu*, *heu*. Left in each panel are data from poorly lit *heu* mounted female, right are data from brightly lit *heu* mounted female.
+Show png we just made. The resolution in this Markdown is unfortunately a bit too low to see the x-axis well enough (but it's well visible in the original PNG). From left to right: *lin*, backcross to *lin* without red, backcross to *lin* with red, F1, backcross to *heu*, *heu*. Left in each panel are data from poorly lit *heu* mounted female, right are data from brightly lit *heu* mounted female.
 ```{r}
 suppl_fig4<-readPNG("Graphs/supplementary_figure5.png")
 grid.raster(suppl_fig4)
@@ -3831,7 +3992,8 @@ data_range<-range(mod1.2$data$log_light_HC)
 #We produce 100 values from the range between the two extremes
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
 #Run emmeans to get slopes for the effect of illuminance around heu 'female' from mod1.2
-pure_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))))
+pure_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod1.2, ~type|log_light_HC, transform="response",
+                                                                                at=list(log_light_HC=val_to_check)))))
 
 #Repeat for effect of illuminance around lin 'female' from mod1.2
 data_range<-range(mod1.2$data$log_light_TLC)
@@ -3841,12 +4003,12 @@ pure_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(
 #Repeat for effect of illuminance around heu 'female' from mod2.2
 data_range<-range(mod2.2$data$log_light_HC)
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
-backcross_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))))
+BC_interaction_heu<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_HC, transform="response",at=list(log_light_HC=val_to_check)))))
 
 #Repeat for effect of illuminance around lin 'female' from mod2.2
 data_range<-range(mod2.2$data$log_light_TLC)
 val_to_check<-do.call(seq,as.list(c(data_range,dist(data_range)/99)))
-backcross_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_TLC, transform="response",at=list(log_light_TLC=val_to_check)))))
+BC_interaction_lin<-extract_emm_cri(suppressWarnings(suppressMessages(emmeans(mod2.2, ~redYN|log_light_TLC, transform="response",at=list(log_light_TLC=val_to_check)))))
 ```
 
 
@@ -3859,12 +4021,16 @@ layout(matrix(c(rep(c(1,4),4),rep(c(2,5),4),3,6,rep(c(7,8),4),rep(c(9,10),4),11,
 par(oma=c(0,3,0,4))
 
 #x-dimension of the two-way interaction plots
-custom_xlim<-range(c(pure_interaction_heu$log_light_HC,pure_interaction_lin$log_light_TLC,backcross_interaction_heu$log_light_HC,backcross_interaction_lin$log_light_TLC))
+custom_xlim<-range(c(pure_interaction_heu$log_light_HC,pure_interaction_lin$log_light_TLC,BC_interaction_heu$log_light_HC,BC_interaction_lin$log_light_TLC))
 
 #Produce the interaction terms with log-illuminance at heu 'female'.
 plot_interaction(covariate="log_light_HC",bay_cov1=pure_interaction_heu,yaxs_side=2,par_mar1=c(0,0.4,1.6,0.4),ylabel="",added_title_cex=0.65,add_empty=F,add_xaxs = F,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,add_letter="A",letter_central=T,custom_xlim=custom_xlim)
 
-plot_interaction(covariate="log_light_HC",bay_cov1=backcross_interaction_heu,added_title=substitute(paste("Illuminance ",italic('H. heurippa')," [",italic('lux'),"]")),yaxs_side=2,par_mar1=c(0,0.4,1.6,0.4),ylabel=substitute(paste("                                                            Proportion interactions with mounted  ",italic('H. heurippa')," female")),added_title_cex=0.65,add_empty=T,add_xaxs = T,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,colname_subset="redYN",sub_names=c("N","Y"),add_letter="B",letter_central=T,text_inner_fill="backcross with vs without red",custom_xlim=custom_xlim)
+added_title1<-substitute(paste("Illuminance ",italic('H. heurippa'),"[",italic('lux'),"]"))
+spaces1<-"                                                            "
+ylabel1<-bquote(.(spaces1)*"Proportion interactions with mounted  "~
+                          italic('H. heurippa')~" female")
+plot_interaction(covariate="log_light_HC",bay_cov1=BC_interaction_heu,added_title=added_title1,yaxs_side=2,par_mar1=c(0,0.4,1.6,0.4),ylabel=ylabel1,added_title_cex=0.65,add_empty=T,add_xaxs = T,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,colname_subset="redYN",sub_names=c("N","Y"),add_letter="B",letter_central=T,text_inner_fill="backcross with vs without red",custom_xlim=custom_xlim)
 
 #Add some dashed lines to separate the panels
 par(xpd=NA)
@@ -3875,7 +4041,7 @@ par(xpd=NA)
 #Produce the interaction terms with log-illuminance at lin 'female'.
 plot_interaction(covariate="log_light_TLC",bay_cov1=pure_interaction_lin,yaxs_side=4,par_mar1=c(0,0.4,1.6,0.4),ylabel="",added_title_cex=0.65,add_empty=F,add_xaxs = F,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,add_letter="C",letter_central=T,custom_xlim=custom_xlim)
 
-plot_interaction(covariate="log_light_TLC",bay_cov1=backcross_interaction_lin,added_title=substitute(paste("Illuminance ",italic('H. t. linaresi')," [",italic('lux'),"]")),yaxs_side=4,par_mar1=c(0,0.4,1.6,0.4),ylabel="",added_title_cex=0.65,add_empty=T,add_xaxs = T,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,colname_subset="redYN",sub_names=c("N","Y"),add_letter="D",letter_central=T,text_inner_fill="backcross with vs without red",custom_xlim=custom_xlim)
+plot_interaction(covariate="log_light_TLC",bay_cov1=BC_interaction_lin,added_title=substitute(paste("Illuminance ",italic('H. t. linaresi')," [",italic('lux'),"]")),yaxs_side=4,par_mar1=c(0,0.4,1.6,0.4),ylabel="",added_title_cex=0.65,add_empty=T,add_xaxs = T,text_inner=F,ylabel_outer = F,ylabel_line=2,numbers=T,colname_subset="redYN",sub_names=c("N","Y"),add_letter="D",letter_central=T,text_inner_fill="backcross with vs without red",custom_xlim=custom_xlim)
 
 #Add some dashed lines to separate the panels
 par(xpd=NA)
@@ -4055,14 +4221,14 @@ First the preferences of males of the two types.
 ```{r}
 quant_tab_pref<-data.frame(c("H. t. linaresi males","H. heurippa males"),round(c(quant_pref_lin[1],quant_pref_heu[1]),3),round(c(quant_pref_lin[2],quant_pref_heu[2]),3),round(c(quant_pref_lin[3],quant_pref_heu[3]),3))
 names(quant_tab_pref)<-c("Pair","2.5%","mean","97.5%")
-quant_tab_pref
+print(quant_tab_pref)
 ```
 
 Now the proportion of each mating pair.
 ```{r}
 quant_tab_pair<-data.frame(c("lin male + heu female","lin male + lin female","heu male + heu female","heu male + lin female"),round(c(quant_heu_lin[1],quant_lin_lin[1],quant_heu_heu[1],quant_lin_heu[1]),3),round(c(quant_heu_lin[2],quant_lin_lin[2],quant_heu_heu[2],quant_lin_heu[2]),3),round(c(quant_heu_lin[3],quant_lin_lin[3],quant_heu_heu[3],quant_lin_heu[3]),3))
 names(quant_tab_pair)<-c("Type","2.5%","mean","97.5%")
-quant_tab_pair
+print(quant_tab_pair)
 ```
 
 #### Numeric predictions given mounted female data
@@ -4071,31 +4237,31 @@ Given our results with the mounted females, we can make some numeric predictions
 
 This is the observed proportion of matings involving a *heu* male:
 ```{r}
-(prop_mating_heu_male<-quant_heu_heu[2]+quant_lin_heu[2])
+print(prop_mating_heu_male<-quant_heu_heu[2]+quant_lin_heu[2])
 ```
 
 Here is what we predict for the overall visual preferences we measured:
 ```{r}
-pred_heu_lin_all<-(1-prop_mating_heu_male)*mean(TLC_posterior_main)
-pred_lin_lin_all<-(1-prop_mating_heu_male)*(1-mean(TLC_posterior_main))
-pred_heu_heu_all<-prop_mating_heu_male*mean(HC_posterior_main)
-pred_lin_heu_all<-prop_mating_heu_male*(1-mean(HC_posterior_main))
+pred_heu_lin_all<-(1-prop_mating_heu_male)*mean(TLC_post_main)
+pred_lin_lin_all<-(1-prop_mating_heu_male)*(1-mean(TLC_post_main))
+pred_heu_heu_all<-prop_mating_heu_male*mean(HC_post_main)
+pred_lin_heu_all<-prop_mating_heu_male*(1-mean(HC_post_main))
 ```
 
 For poorly lit *heu* female (from the categorical model)
 ```{r}
-pred_heu_lin_dark<-(1-prop_mating_heu_male)*mean(TLC_posterior_cat_1)
-pred_lin_lin_dark<-(1-prop_mating_heu_male)*(1-mean(TLC_posterior_cat_1))
-pred_heu_heu_dark<-prop_mating_heu_male*mean(HC_posterior_cat_1)
-pred_lin_heu_dark<-prop_mating_heu_male*(1-mean(HC_posterior_cat_1))
+pred_heu_lin_dark<-(1-prop_mating_heu_male)*mean(TLC_post_cat_1)
+pred_lin_lin_dark<-(1-prop_mating_heu_male)*(1-mean(TLC_post_cat_1))
+pred_heu_heu_dark<-prop_mating_heu_male*mean(HC_post_cat_1)
+pred_lin_heu_dark<-prop_mating_heu_male*(1-mean(HC_post_cat_1))
 ```
 
 For brightly lit *heu* female (from the categorical model)
 ```{r}
-pred_heu_lin_bright<-(1-prop_mating_heu_male)*mean(TLC_posterior_cat_2)
-pred_lin_lin_bright<-(1-prop_mating_heu_male)*(1-mean(TLC_posterior_cat_2))
-pred_heu_heu_bright<-prop_mating_heu_male*mean(HC_posterior_cat_2)
-pred_lin_heu_bright<-prop_mating_heu_male*(1-mean(HC_posterior_cat_2))
+pred_heu_lin_bright<-(1-prop_mating_heu_male)*mean(TLC_post_cat_2)
+pred_lin_lin_bright<-(1-prop_mating_heu_male)*(1-mean(TLC_post_cat_2))
+pred_heu_heu_bright<-prop_mating_heu_male*mean(HC_post_cat_2)
+pred_lin_heu_bright<-prop_mating_heu_male*(1-mean(HC_post_cat_2))
 ```
 
 We make a nice table with CI/CrIs of real data and of estimates. We take the estimated means from the `binom.bayes`{.R} function, which are always almost exactly the same as the given probability. When given the default prior, the posterior mean is always defined as `(x + 0.5)/(n + 1)`{.R}, where `x`{.R} is successes and `n`{.R} is trials. The result from this returns a value **very** similar to the "true" estimated proportion of successes.
@@ -4104,7 +4270,7 @@ tetr_est<-rbind(paste0(quant_tab_pair$mean," [",paste0(quant_tab_pair$`2.5%`,"; 
 rownames(tetr_est)<-c("true experiment","estimate all data","estimate dark","estimate bright")
 colnames(tetr_est)<-c("Heu_female+Lin_male","Lin_female+Lin_male","Heu_female+Heu_male","Lin_female+Heu_male")
 tetr_est<-as.data.frame(tetr_est)
-tetr_est
+print(tetr_est)
 ```
 
 
@@ -4197,11 +4363,12 @@ abline(v=0,lwd=3,lty="dashed")
 
 # Session Info
 
-To get R Markdown to produce a HTML without problems, install Pandoc as described under this link: https://github.com/rstudio/rstudio/issues/4462
+This Markdown was produced as a PDF. However, we also ran it in HTML format, for which we recommend to install Pandoc as described under this link: https://github.com/rstudio/rstudio/issues/4462
 
-Also, I installed the libraries `xcolor`{.R} and `formatR`{.R} for nicer Markdown output (not sure if they were actually necessary in the end).
+For nice HTML format, we recommend the package `rmdformats`{.R} with the theme `readthedown`{.R}.
 
-For the overall format, I installed the package `rmdformats`{.R} and used the theme `readthedown`{.R}.
+Also, we installed the libraries `xcolor`{.R} and `formatR`{.R} for nicer Markdown output (not sure if they were actually necessary in the end).
+
 
 Session info:
 ```{r}
