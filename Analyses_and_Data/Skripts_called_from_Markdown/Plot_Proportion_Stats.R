@@ -379,6 +379,13 @@
 #sets margins to an aesthetically pleasant setting.
 #Default c()
 
+#ylims
+#strings indicating where to draw the y-limits:
+# - "0_to_1" (Default): y-axis going from 0 to 1.
+# - "range": ranging from minimum to maximum value
+# - "0_to_max: ranging from 0 to maximum value
+# - "min_to_1": ranging from minimum value to 1
+
 #show_estimators
 #Whether to show estimators (+CI) resulting from the statistical test in the plot (TRUE) or whether not (FALSE)
 #Has to be a boolean vector of size 2. First entry stands for decision concerning
@@ -811,6 +818,7 @@ plot_proportion_stats<-function(input_data,
                                 output_dir="",
                                 plot_dim=c(), ##matters only if output_dir was set
                                 par_mar=c(),
+                                ylims="0_to_1",
                                 show_estimators=c(T,T), ##matters only if either stats_for_1sub or stats_for_1sub ==T
                                 show_p_values_plot=c(T,T), ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and either stats_for_1sub or stats_for_2sub ==T
                                 suppress_est1_if2=F, ##matters only if type_of_stats!="bayes_glm_glmer" and type_of_stats!="bayes_own_brm" and stats_for_1sub and stats_for_2sub ==T and sub1_col and sub2_col are set
@@ -2129,6 +2137,21 @@ plot_proportion_stats<-function(input_data,
       if(sum(par_mar<0)>0){
         stop("If you chose to set par_mar, all its values have to be 0 or bigger than 0.")
       }
+    }
+    
+    #ylims
+    
+    if(length(ylims)!=1){
+      stop("ylims has to be of length one and a character (either '0_to_1', 'range', '0_to_max' or 'min_to_1').")
+    }
+    if(!is.vector(ylims)|is.list(ylims)){
+      stop("ylims has to be of length one and a character (either '0_to_1', 'range', '0_to_max' or 'min_to_1').")
+    }
+    if(!is.character(ylims)){
+      stop("ylims has to be of length one and a character (either '0_to_1', 'range', '0_to_max' or 'min_to_1').")
+    }
+    if(!ylims%in%c("0_to_1","range","0_to_max","min_to_1")){
+      stop("ylims has to be of length one and a character (either '0_to_1', 'range', '0_to_max' or 'min_to_1').")
     }
     
     #show_estimators
@@ -5241,9 +5264,30 @@ plot_proportion_stats<-function(input_data,
       par(mar=par_mar)
     }
     
-    plot(1,1,type="n",xlim=c(0,sum(sub1_panel_weights)),
-         ylim=c(0,1),xaxt="none",yaxt="none",
-         ylab="",xlab="",xaxs="i")
+    if(ylims=="0_to_1"){
+      plot(1,1,type="n",xlim=c(0,sum(sub1_panel_weights)),
+           ylim=c(0,1),xaxt="none",yaxt="none",
+           ylab="",xlab="",xaxs="i")
+    } else{
+      if(ylims=="range"){
+        plot(1,1,type="n",xlim=c(0,sum(sub1_panel_weights)),
+             ylim=range(as.vector(tfinal$preference_DUMMY),na.rm=T),
+             xaxt="none",yaxt="none",
+             ylab="",xlab="",xaxs="i")
+      } else{
+        if(ylims=="0_to_max"){
+          plot(1,1,type="n",xlim=c(0,sum(sub1_panel_weights)),
+               ylim=c(0,max(as.vector(tfinal$preference_DUMMY),na.rm=T)),
+               xaxt="none",yaxt="none",
+               ylab="",xlab="",xaxs="i")
+        } else{
+          plot(1,1,type="n",xlim=c(0,sum(sub1_panel_weights)),
+               ylim=c(min(as.vector(tfinal$preference_DUMMY),na.rm=T),1),
+               xaxt="none",yaxt="none",
+               ylab="",xlab="",xaxs="i")
+        }
+      }
+    }
     
     
     #BOXPLOTS with coloured box
@@ -5949,10 +5993,18 @@ plot_proportion_stats<-function(input_data,
         } 
         
         #yaxis
-        axis(2,at=c(0,0.25,0.5,0.75,1),labels=F,tck=y_tck,lwd=1)
-        if(add_y_labels){
-          axis(2,at=c(0,0.25,0.5,0.75,1),c("0","0.25","0.5","0.75","1"),las=1,cex.axis=0.85,line=-0.45,lwd=0)
+        if(ylims!="0_to_1"){
+          axis(2,labels=F,tck=y_tck,lwd=1)
+          if(add_y_labels){
+            axis(2,las=1,cex.axis=0.85,line=-0.45,lwd=0)
+          }
+        } else{
+          axis(2,at=c(0,0.25,0.5,0.75,1),labels=F,tck=y_tck,lwd=1)
+          if(add_y_labels){
+            axis(2,at=c(0,0.25,0.5,0.75,1),c("0","0.25","0.5","0.75","1"),las=1,cex.axis=0.85,line=-0.45,lwd=0)
+          }
         }
+        
         
         box(,lwd=1.4)
         
