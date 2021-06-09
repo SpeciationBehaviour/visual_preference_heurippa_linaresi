@@ -358,6 +358,11 @@
 #graphical output, i.e. if only_stats was set to F
 
 
+#return_plot_table
+#Whether to return not only stats, but also the table used to produce the plots, as well as the newly jittered coordinates (for further tweaking of your plot)
+#Note that some columns are renamed here and it might not be immediately obvious what each means.
+#Default is F
+
 #output_dir
 #Output file directory
 #Directory for output file.
@@ -540,6 +545,11 @@
 #colours to each subset, i.e. orange to the dots on left (y1) and darkorange (y2) to dots on right.
 #If you didn't set a sub1_col and dot_colours is set to a list, only the first element of the list will be used as 
 #x axis label. 
+#Default is "black"
+
+#line_colours
+#Colour of lines surrounding dots
+#Exactly the same logic as for dot_colours
 #Default is "black"
 
 #dot_colour_legend
@@ -815,6 +825,7 @@ plot_proportion_stats<-function(input_data,
                                 only_stats=F,
                                 sub1_panel_weights=c(), ##matters only if we have more than one sub1_state
                                 ####ALL FOLLOWING ONES ONLY MATTER IF only_stats==F
+                                return_plot_table=F,
                                 output_dir="",
                                 plot_dim=c(), ##matters only if output_dir was set
                                 par_mar=c(),
@@ -840,7 +851,8 @@ plot_proportion_stats<-function(input_data,
                                 legend_dots=c(1,2,3,4,5),
                                 legend_omi=F, ## only matters if legend should be plotted
                                 legend_info=T, ## only matters if legend should be plotted
-                                dot_colours="black", ## only matters if legend should be plotted
+                                dot_colours="black",
+                                line_colours="black",
                                 dot_colour_legend="black", ## only matters if legend should be plotted
                                 squeeze_legend=1, ## only matters if legend should be plotted
                                 transparency=0.75,
@@ -2041,8 +2053,23 @@ plot_proportion_stats<-function(input_data,
   
   #####PLOT ERROR CHECK
   
+  if(only_stats){
+    return_plot_table<-F
+  }
+  
   if(!only_stats){
     
+    #return_plot_table
+    if(length(return_plot_table)!=1){
+      stop("return_plot_table has to be a boolean vector of length 1.")
+    }
+    if(!is.vector(return_plot_table)|is.list(return_plot_table)){
+      stop("return_plot_table has to be a boolean vector of length 1.")
+    }
+    if(sum(!return_plot_table%in%0:1)>0){
+      stop("return_plot_table has to be boolean (T or F).")
+    }
+
     #output_dir
     
     if(is.list(output_dir)){
@@ -2633,6 +2660,75 @@ plot_proportion_stats<-function(input_data,
       }
       if(sum(areColors(unlist(dot_colours)))!=length(unlist(dot_colours))){
         stop("dot_colours has some non-colour elements.")
+      }
+    }
+    
+    #line_colours
+    
+    if(length(line_colours)==0){
+      stop("line_colours is empty.")
+    }
+    dont_do_later_col_checks<-F
+    line_colour_as_columns<-F
+    if(!is.list(line_colours)){
+      if(!is.vector(line_colours)){
+        stop("line_colours has to either be provided as a list or as a vector of size 1.")
+      }
+      dont_do_later_col_checks<-T
+      if(length(line_colours)==1){
+        if(!line_colours%in%names(tfinal)){
+          if(!areColors(line_colours)){
+            stop("If you provide line_colours as a vector of just size 1, the one element has to be a valid colour or a column name of your table.")
+          }
+        } else{
+          if(areColors(line_colours)){
+            stop(paste0("The column name '",line_colours,"' in your table carries the same name as a valid R colour. Your setting for line_colours is ambiguous, since you could have either meant this as a single R colour or as a pointer to your colour column."))
+          }
+          if(sum(areColors(tfinal[,line_colours]))!=nrow(tfinal)){
+            stop("You provided line_colours as a column name of your table, but not all its elements are valid colours.")
+          }
+          line_colour_as_columns<-T
+        }
+      } else{
+        stop("If you provide line_colours as a vector, it has to be of size 1.")
+      }
+      #If the list is though one containing one vector of length 1,
+      #unlist it.
+    } else{
+      if(length(line_colours)==1){
+        if(length(line_colours[[1]])==1){
+          line_colours<-line_colours[[1]]
+          if(!areColors(line_colours)&!line_colours%in%names(tfinal)){
+            stop("You provided line_colours as list with size 1, which is a vector of size 1. The list was removed and changed into a vector of size 1, but the colour it contains is neither a valid colour nor a column name.")
+          }
+          dont_do_later_col_checks<-T
+        }
+      }
+    }
+    if(!dont_do_later_col_checks){
+      if(length(line_colours)!=length(sub1_states)){
+        if(create_dummy_col){
+          if(verbose){
+            print("Since you didn't set a sub1_col and the line_colours list is not of length 1, its first element gets used.")
+          }
+        } else{
+          stop("Since you provide line_colours as a list of colours, it has to be of same length as sub1_states.")
+        }
+      }
+      line_colours_length<-sapply(1:length(line_colours),function(x) length(line_colours[[x]]))
+      if(sum(line_colours_length>2)>0){
+        stop("No element of line_colours can be of more than size 2.")
+      }
+      if(!check_sub2_states&sum(line_colours_length>1)>0){
+        #stop("There is no second subsetting performed, but line_colours has some elements of more than just one colour.")
+      }
+      if(check_sub2_states){
+        if(sum(sub_lengths==line_colours_length)!=length(line_colours_length)){
+          warning("Some sub2_states don't have different colours, because you didn't provide them in the line_colours list.")
+        }
+      }
+      if(sum(areColors(unlist(line_colours)))!=length(unlist(line_colours))){
+        stop("line_colours has some non-colour elements.")
       }
     }
     
@@ -4882,13 +4978,41 @@ plot_proportion_stats<-function(input_data,
         }
       }
     }
+    
+    #Get a vector of colour for the lines of the dots
+    if(!is.list(line_colours)){
+      #If colours from column
+      if(line_colour_as_columns){
+        line_colourss<-tfinal[,line_colours]
+      } else{
+        line_colourss<-rep(line_colours[1],nrow(tfinal))
+      }
+    } else{
+      line_colourss<-c()
+      for(colo in 1:nrow(tfinal)){
+        if(length(line_colours[[positioning_back_up[colo]]])==2&length(sub2_col)>0){
+          line_colourss<-c(line_colourss,line_colours[[positioning_back_up[colo]]][positioning_sub2[colo]])
+        } else{
+          line_colourss<-c(line_colourss,line_colours[[positioning_back_up[colo]]][1])
+        }
+      }
+    }
+    
   } else{
     dot_colourss<-rep(NA,nrow(tfinal))  
+    line_colourss<-rep(NA,nrow(tfinal))  
   }
   
-  
   #Add to table.
-  tfinal<-cbind(tfinal,positioning,positioning_sub2,dot_colourss,appearance_DUMMY,preference_DUMMY,positioning_back_up)
+  tfinal<-cbind(tfinal,positioning,positioning_sub2,dot_colourss,line_colourss,appearance_DUMMY,preference_DUMMY,positioning_back_up)
+  
+  #Make sure colours are no factors
+  if(is.factor(tfinal$dot_colourss)){
+    tfinal$dot_colourss<-levels(tfinal$dot_colourss)[tfinal$dot_colourss]
+  }
+  if(is.factor(tfinal$line_colourss)){
+    tfinal$line_colourss<-levels(tfinal$line_colourss)[tfinal$line_colourss]
+  }
   
   
   #######################################################
@@ -5572,7 +5696,8 @@ plot_proportion_stats<-function(input_data,
               }
               points(pos_in_plot_n,tfinal$preference_DUMMY,
                      pch=21,cex=sqrt(tfinal$appearance_DUMMY)*dot_size,
-                     bg=adjustcolor(tfinal$dot_colourss,transparency),lwd=dot_lwd)
+                     bg=adjustcolor(tfinal$dot_colourss,transparency),lwd=dot_lwd,
+                     col=tfinal$line_colourss)
             }
           } else{
             
@@ -5654,7 +5779,8 @@ plot_proportion_stats<-function(input_data,
               #Add points to graph.
               points(pos_in_plot_n_cat,as.vector(tfinal$preference_DUMMY)[tfinal$positioning_back_up%in%which_one_categ],
                      pch=21,cex=sqrt(tfinal$appearance_DUMMY[tfinal$positioning_back_up%in%which_one_categ])*dot_size,
-                     bg=adjustcolor(tfinal$dot_colourss[tfinal$positioning_back_up%in%which_one_categ],transparency),lwd=dot_lwd)
+                     bg=adjustcolor(tfinal$dot_colourss[tfinal$positioning_back_up%in%which_one_categ],transparency),lwd=dot_lwd,
+                     col=tfinal$line_colourss[tfinal$positioning_back_up%in%which_one_categ])
             }
             
             
@@ -5668,10 +5794,13 @@ plot_proportion_stats<-function(input_data,
               #Add points to graph.
               points(pos_in_plot_n_no_cat,as.vector(tfinal$preference_DUMMY)[!tfinal$positioning_back_up%in%which_one_categ],
                      pch=21,cex=sqrt(tfinal$appearance_DUMMY[!tfinal$positioning_back_up%in%which_one_categ])*dot_size,
-                     bg=adjustcolor(tfinal$dot_colourss[!tfinal$positioning_back_up%in%which_one_categ],transparency),lwd=dot_lwd)
+                     bg=adjustcolor(tfinal$dot_colourss[!tfinal$positioning_back_up%in%which_one_categ],transparency),lwd=dot_lwd,
+                     col=tfinal$line_colourss[!tfinal$positioning_back_up%in%which_one_categ])
             }
           }
         } else{
+          
+          #If there no second subset:
           
           #Check if errors due to dot_size.
           jitter_call<-"(verbose=F,lwd=dot_lwd,fact_coord=tfinal$positioning,
@@ -5694,7 +5823,8 @@ plot_proportion_stats<-function(input_data,
           
           points(pos_in_plot_n,tfinal$preference_DUMMY,
                  pch=21,cex=sqrt(tfinal$appearance_DUMMY)*dot_size,
-                 bg=adjustcolor(tfinal$dot_colourss,transparency),lwd=dot_lwd)
+                 bg=adjustcolor(tfinal$dot_colourss,transparency),lwd=dot_lwd,
+                 col=tfinal$line_colourss)
         }
         
         
@@ -6161,8 +6291,12 @@ plot_proportion_stats<-function(input_data,
           set.seed(as.numeric(Sys.time()))
         }
         
-        #And return stats
-        return(testo)
+        #And return stats (+ plot table, if wished)
+        if(return_plot_table){
+          return(list(testo,tfinal,pos_in_plot_n))
+        } else{
+          return(testo)
+        }
         
         #No need to close plotting devices here because tryCatch seems to do it.
       }
@@ -6195,6 +6329,10 @@ plot_proportion_stats<-function(input_data,
     print("--DONE--")
   }
   
-  #Return stats results!
-  return(testo)
+  #Return stats results! (+ plot table, if wished)
+  if(return_plot_table){
+    return(list(testo,tfinal,pos_in_plot_n))
+  } else{
+    return(testo)
+  }
 }
